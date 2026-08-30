@@ -41,7 +41,18 @@ curl -X POST localhost:8000/api/admin/ricarica-demo
 Test:
 
 ```bash
-python -m unittest discover -s tests -v      # 57 test
+python -m unittest discover -s tests -v      # 58 test
+```
+
+## Demo statica
+
+Per mostrare la piattaforma senza avviare il server (una presentazione, un
+invio via mail) si genera una copia navigabile in un unico file HTML, con lo
+scenario gia' calcolato dal motore e il simulatore make or buy funzionante in
+pagina:
+
+```bash
+python demo/costruisci.py     # produce demo/logisticmaster-demo.html
 ```
 
 ---
@@ -140,7 +151,7 @@ app/
     vrp.py                ottimizzazione dei giri e tempi di guida
     pianificazione.py     orchestrazione del piano e KPI
 web/                      interfaccia operativa (HTML/CSS/JS, zero dipendenze)
-tests/                    57 test su motore di calcolo e API
+tests/                    58 test su motore di calcolo e API
 ```
 
 Dipendenze: FastAPI, Uvicorn, Pydantic. Il database e' SQLite (nessun servizio

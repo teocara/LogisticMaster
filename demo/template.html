@@ -1,0 +1,893 @@
+<title>LogisticMaster</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* ---------------------------------------------------------------- token */
+:root {
+  --ground: #eef2f6;
+  --surface: #ffffff;
+  --surface-alt: #f6f9fc;
+  --border: #d7e0e9;
+  --border-forte: #b9c8d6;
+  --ink: #16202b;
+  --ink-tenue: #5b6a79;
+  --blu: #10395e;
+  --blu-vivo: #1c5f96;
+  --verde: #1a6f52;
+  --verde-tenue: #e6f3ed;
+  --ambra: #a76c14;
+  --ambra-tenue: #fbf0dd;
+  --rosso: #9c2d28;
+  --rosso-tenue: #fbe8e7;
+  --viola: #5b3d94;
+  --viola-tenue: #f0ebfa;
+  --ombra: 0 1px 2px rgba(16, 57, 94, .06), 0 8px 24px -16px rgba(16, 57, 94, .28);
+  --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0c141c;
+    --surface: #121e29;
+    --surface-alt: #16232f;
+    --border: #24333f;
+    --border-forte: #35485a;
+    --ink: #e4ecf3;
+    --ink-tenue: #93a5b6;
+    --blu: #8fc3ea;
+    --blu-vivo: #5aa7de;
+    --verde: #5cc79b;
+    --verde-tenue: #14312a;
+    --ambra: #e0a94e;
+    --ambra-tenue: #33270f;
+    --rosso: #ef8d86;
+    --rosso-tenue: #38191a;
+    --viola: #b49ae8;
+    --viola-tenue: #241d38;
+    --ombra: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px -18px rgba(0, 0, 0, .8);
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0c141c;
+  --surface: #121e29;
+  --surface-alt: #16232f;
+  --border: #24333f;
+  --border-forte: #35485a;
+  --ink: #e4ecf3;
+  --ink-tenue: #93a5b6;
+  --blu: #8fc3ea;
+  --blu-vivo: #5aa7de;
+  --verde: #5cc79b;
+  --verde-tenue: #14312a;
+  --ambra: #e0a94e;
+  --ambra-tenue: #33270f;
+  --rosso: #ef8d86;
+  --rosso-tenue: #38191a;
+  --viola: #b49ae8;
+  --viola-tenue: #241d38;
+  --ombra: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px -18px rgba(0, 0, 0, .8);
+}
+
+/* ------------------------------------------------------------ struttura */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible { outline: 2px solid var(--blu-vivo); outline-offset: 2px; border-radius: 3px; }
+
+.testata {
+  background: linear-gradient(105deg, #0c2b48, #16527f 62%, #1c6ca8);
+  color: #f2f7fb;
+  padding: 18px 26px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 20px; flex-wrap: wrap;
+}
+.marchio { display: flex; align-items: center; gap: 14px; }
+.sigla {
+  width: 42px; height: 42px; border-radius: 9px;
+  background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.22);
+  display: grid; place-items: center;
+  font-family: var(--mono); font-weight: 600; font-size: 15px; letter-spacing: .04em;
+}
+.testata h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+.testata p { margin: 1px 0 0; font-size: 12.5px; color: rgba(242,247,251,.78); }
+.contatori {
+  display: flex; gap: 18px; font-family: var(--mono); font-size: 12px;
+  color: rgba(242,247,251,.9); flex-wrap: wrap;
+}
+.contatori b { display: block; font-size: 17px; font-weight: 600; }
+.contatori span { display: block; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: rgba(242,247,251,.6); }
+
+.avviso {
+  background: var(--surface-alt); border-bottom: 1px solid var(--border);
+  padding: 9px 26px; font-size: 12.5px; color: var(--ink-tenue);
+}
+.avviso strong { color: var(--ink); font-weight: 600; }
+
+.sezioni {
+  display: flex; gap: 2px; padding: 0 18px; overflow-x: auto;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 5;
+}
+.sezioni button {
+  border: 0; background: none; cursor: pointer; white-space: nowrap;
+  padding: 13px 15px; font-family: var(--sans); font-size: 13.5px;
+  color: var(--ink-tenue); border-bottom: 2px solid transparent;
+}
+.sezioni button:hover { color: var(--blu); }
+.sezioni button[aria-selected="true"] { color: var(--blu); font-weight: 600; border-bottom-color: var(--blu-vivo); }
+
+main { padding: 22px 26px 48px; max-width: 1580px; margin: 0 auto; }
+.pannello[hidden] { display: none; }
+.intestazione-pannello {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  gap: 18px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.intestazione-pannello h2 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -.01em; }
+.intestazione-pannello p { margin: 3px 0 0; font-size: 12.5px; color: var(--ink-tenue); max-width: 68ch; }
+
+.scheda {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 16px 18px; box-shadow: var(--ombra);
+}
+.scheda + .scheda, .griglia + .scheda, .scheda + .griglia { margin-top: 18px; }
+.scheda h3 {
+  margin: 0 0 12px; font-size: 11.5px; font-weight: 600;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--ink-tenue);
+}
+.griglia { display: grid; gap: 18px; align-items: start; }
+.griglia.due { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.griglia.mappa { grid-template-columns: minmax(0, 420px) minmax(0, 1fr); }
+@media (max-width: 1080px) { .griglia.due, .griglia.mappa { grid-template-columns: minmax(0, 1fr); } }
+
+/* ------------------------------------------------------------------ kpi */
+.kpi-riga {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(178px, 1fr));
+  gap: 12px; margin-bottom: 18px;
+}
+.kpi {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 9px; padding: 12px 14px; position: relative; overflow: hidden;
+}
+.kpi::before {
+  content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--blu-vivo);
+}
+.kpi.positivo::before { background: var(--verde); }
+.kpi.attenzione::before { background: var(--ambra); }
+.kpi.critico::before { background: var(--rosso); }
+.kpi .voce {
+  font-size: 10.5px; letter-spacing: .085em; text-transform: uppercase;
+  color: var(--ink-tenue); font-weight: 500;
+}
+.kpi .cifra {
+  font-family: var(--mono); font-size: 21px; font-weight: 600;
+  margin-top: 3px; letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+}
+.kpi .glossa { font-size: 11.5px; color: var(--ink-tenue); margin-top: 1px; }
+
+/* --------------------------------------------------------------- tabelle */
+.tabella-scroll { overflow: auto; margin: 0 -18px -16px; padding: 0 18px 16px; }
+.tabella-scroll.alta { max-height: 520px; }
+table { width: 100%; border-collapse: collapse; font-size: 12.6px; }
+th {
+  position: sticky; top: 0; z-index: 1; text-align: left; white-space: nowrap;
+  background: var(--surface-alt); color: var(--ink-tenue);
+  font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; font-weight: 600;
+  padding: 8px 10px; border-bottom: 1px solid var(--border);
+}
+td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: var(--surface-alt); }
+tr.scelta { cursor: pointer; }
+tr[aria-selected="true"] { background: var(--surface-alt); box-shadow: inset 3px 0 0 var(--blu-vivo); }
+.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.codice { font-family: var(--mono); font-weight: 500; }
+small { display: block; color: var(--ink-tenue); font-size: 11.2px; }
+
+.pillola {
+  display: inline-block; padding: 2px 8px; border-radius: 3px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+  font-family: var(--mono);
+}
+.p-rottura, .p-critica { background: var(--rosso-tenue); color: var(--rosso); }
+.p-alta { background: var(--ambra-tenue); color: var(--ambra); }
+.p-normale, .p-ok { background: var(--verde-tenue); color: var(--verde); }
+.p-proprio { background: var(--verde-tenue); color: var(--verde); }
+.p-terzi { background: var(--viola-tenue); color: var(--viola); }
+.p-neutro { background: var(--surface-alt); color: var(--ink-tenue); border: 1px solid var(--border); }
+
+.misura { display: flex; align-items: center; gap: 8px; }
+.misura .barra {
+  flex: 1; height: 6px; min-width: 42px; border-radius: 3px;
+  background: var(--surface-alt); border: 1px solid var(--border); overflow: hidden;
+}
+.misura .barra i { display: block; height: 100%; background: var(--blu-vivo); }
+.misura .barra i.bassa { background: var(--ambra); }
+.misura .barra i.alta { background: var(--verde); }
+
+/* ---------------------------------------------------------------- mappa */
+.mappa { width: 100%; height: auto; display: block; border-radius: 8px; background: var(--surface-alt); }
+.legenda {
+  display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px;
+  font-size: 11.5px; color: var(--ink-tenue);
+}
+.legenda i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+
+/* --------------------------------------------------------------- moduli */
+.campi { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+label.campo { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--ink-tenue); letter-spacing: .03em; }
+label.riga { flex-direction: row; align-items: center; gap: 7px; font-size: 12.5px; }
+input, select {
+  font-family: var(--sans); font-size: 13px; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--border-forte);
+  border-radius: 6px; padding: 7px 9px; min-width: 96px;
+}
+input[type="number"] { font-family: var(--mono); }
+input[type="checkbox"] { min-width: 0; accent-color: var(--blu-vivo); }
+button.azione {
+  font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer;
+  background: var(--blu-vivo); color: #fff; border: 1px solid transparent;
+  border-radius: 6px; padding: 8px 16px;
+}
+button.azione:hover { background: var(--blu); }
+button.azione.tenue { background: var(--surface); color: var(--blu); border-color: var(--border-forte); }
+button.azione.tenue:hover { background: var(--surface-alt); }
+button.azione[aria-pressed="true"] { background: var(--blu); color: #fff; border-color: transparent; }
+
+/* -------------------------------------------------------------- dettagli */
+.coppie { display: grid; grid-template-columns: auto 1fr; gap: 5px 16px; margin: 0 0 16px; font-size: 13px; }
+.coppie dt { color: var(--ink-tenue); }
+.coppie dd { margin: 0; font-weight: 500; }
+.voci-costo { font-size: 12.6px; }
+.voci-costo div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; }
+.voci-costo div span:last-child { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.voci-costo .somma { border-top: 1px solid var(--border); margin-top: 5px; padding-top: 7px; font-weight: 600; }
+.confronto { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 620px) { .confronto { grid-template-columns: 1fr; } }
+.confronto .lato { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.confronto .lato.vince { border-color: var(--verde); background: var(--verde-tenue); }
+.confronto h4 { margin: 0 0 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-tenue); }
+.esito {
+  margin-top: 14px; border: 1px solid var(--border); border-left: 3px solid var(--verde);
+  border-radius: 8px; padding: 12px 14px;
+}
+.esito .cifra { font-family: var(--mono); font-size: 20px; font-weight: 600; }
+.vuoto { color: var(--ink-tenue); font-style: italic; margin: 0; }
+.nota { font-size: 12.2px; color: var(--ink-tenue); margin: 0 0 12px; max-width: 78ch; }
+.leve { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.leva { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.leva .voce { font-size: 10.5px; letter-spacing: .085em; text-transform: uppercase; color: var(--ink-tenue); }
+.leva .cifra { font-family: var(--mono); font-size: 20px; font-weight: 600; color: var(--verde); margin-top: 3px; }
+.leva .glossa { font-size: 11.5px; color: var(--ink-tenue); }
+.chiusura { padding: 16px 26px 34px; font-size: 12px; color: var(--ink-tenue); }
+.chiusura code { font-family: var(--mono); font-size: 11.5px; }
+</style>
+
+<header class="testata">
+  <div class="marchio">
+    <div class="sigla">LM</div>
+    <div>
+      <h1>LogisticMaster</h1>
+      <p>Ottimizzazione dei flussi logistici e di trasporto per la produzione multi-sito</p>
+    </div>
+  </div>
+  <div class="contatori" id="contatori"></div>
+</header>
+
+<p class="avviso">
+  <strong>Demo navigabile.</strong> Tutti i numeri di questa pagina sono prodotti dal motore di calcolo della
+  piattaforma su uno scenario dimostrativo: 3 stabilimenti, 5 siti di stoccaggio, 26 clienti, 71 ordini.
+  Il simulatore make or buy ricalcola i costi in pagina.
+</p>
+
+<nav class="sezioni" id="sezioni" role="tablist"></nav>
+
+<main>
+  <section class="pannello" id="p-cruscotto" role="tabpanel">
+    <div class="intestazione-pannello">
+      <div>
+        <h2>Cruscotto direzionale</h2>
+        <p>Stato della rete prima della pianificazione: dove il capitale è fermo e dove il servizio è a rischio.</p>
+      </div>
+    </div>
+    <div class="kpi-riga" id="kpi-cruscotto"></div>
+    <div class="griglia due">
+      <div class="scheda">
+        <h3>Valore delle giacenze per sito</h3>
+        <div id="giacenze-sito"></div>
+      </div>
+      <div class="scheda">
+        <h3>Coperture più corte</h3>
+        <p class="nota">Ordinate per giorni di copertura residua. Sotto il lead time la rottura di stock è già certa.</p>
+        <div class="tabella-scroll"><table id="tab-criticita"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="pannello" id="p-rete" role="tabpanel" hidden>
+    <div class="intestazione-pannello">
+      <div>
+        <h2>Rete logistica</h2>
+        <p>Stabilimenti, depositi e punti di consegna con le distanze stradali stimate fra i siti interni.</p>
+      </div>
+      <div class="campi">
+        <label class="campo">Tipo sito
+          <select id="filtro-sito">
+            <option value="">Tutti</option>
+            <option value="STABILIMENTO">Stabilimenti</option>
+            <option value="DEPOSITO">Depositi</option>
+            <option value="CROSSDOCK">Cross-dock</option>
+            <option value="CLIENTE">Clienti</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div class="griglia mappa">
+      <div class="scheda">
+        <h3>Mappa</h3>
+        <svg class="mappa" id="mappa-rete" viewBox="0 0 400 560" role="img" aria-label="Mappa della rete logistica italiana"></svg>
+        <div class="legenda">
+          <span><i style="background:#10395e"></i>Stabilimento</span>
+          <span><i style="background:#1a8f6b"></i>Deposito</span>
+          <span><i style="background:#c2871f"></i>Cross-dock</span>
+          <span><i style="background:#8ba1b5"></i>Cliente</span>
+        </div>
+      </div>
+      <div class="scheda">
+        <h3>Siti</h3>
+        <div class="tabella-scroll alta"><table id="tab-siti"></table></div>
+      </div>
+    </div>
+    <div class="scheda">
+      <h3>Matrice delle distanze fra siti interni (km)</h3>
+      <div class="tabella-scroll"><table id="tab-matrice"></table></div>
+    </div>
+  </section>
+
+  <section class="pannello" id="p-scorte" role="tabpanel" hidden>
+    <div class="intestazione-pannello">
+      <div>
+        <h2>Analisi delle scorte</h2>
+        <p>Scorta di sicurezza calcolata con variabilità congiunta di domanda e lead time; il lotto di riordino
+          usa la formula di Wilson.</p>
+      </div>
+      <div class="campi">
+        <button class="azione tenue" id="filtro-scorte" aria-pressed="false">Solo sotto punto di riordino</button>
+      </div>
+    </div>
+    <div class="kpi-riga" id="kpi-scorte"></div>
+    <div class="scheda">
+      <div class="tabella-scroll alta"><table id="tab-scorte"></table></div>
+    </div>
+  </section>
+
+  <section class="pannello" id="p-trasferimenti" role="tabpanel" hidden>
+    <div class="intestazione-pannello">
+      <div>
+        <h2>Riequilibrio inter-sito</h2>
+        <p>Prima di chiedere nuova produzione, i fabbisogni vengono coperti con le eccedenze della rete,
+          attingendo ogni volta dall’origine più vicina che resta sopra il proprio punto di riordino.</p>
+      </div>
+    </div>
+    <div class="kpi-riga" id="kpi-trasferimenti"></div>
+    <div class="scheda">
+      <div class="tabella-scroll alta"><table id="tab-trasferimenti"></table></div>
+    </div>
+  </section>
+
+  <section class="pannello" id="p-ordini" role="tabpanel" hidden>
+    <div class="intestazione-pannello">
+      <div>
+        <h2>Portafoglio ordini</h2>
+        <p>Ordini da pianificare con peso e volume già calcolati dalle righe articolo.</p>
+      </div>
+      <div class="campi">
+        <label class="campo">Destinazione
+          <select id="filtro-ordini"><option value="">Tutte le regioni</option></select>
+        </label>
+      </div>
+    </div>
+    <div class="scheda">
+      <div class="tabella-scroll alta"><table id="tab-ordini"></table></div>
+    </div>
+  </section>
+
+  <section class="pannello" id="p-piano" role="tabpanel" hidden>
+    <div class="intestazione-pannello">
+      <div>
+        <h2>Piano di trasporto</h2>
+        <p>71 ordini consolidati in 32 giri con Clarke &amp; Wright e 2-opt, nel rispetto di finestre orarie e
+          tempi di guida (Reg. CE 561/2006). I viaggi lunghi sono pianificati su più giorni, non scartati.</p>
+      </div>
+    </div>
+    <div class="kpi-riga" id="kpi-piano"></div>
+    <div class="scheda">
+      <h3>Confronto con lo scenario senza ottimizzazione</h3>
+      <p class="nota" id="testo-base"></p>
+      <div class="leve" id="leve-risparmio"></div>
+    </div>
+    <div class="griglia due">
+      <div class="scheda">
+        <h3>Giri di consegna</h3>
+        <div class="tabella-scroll alta"><table id="tab-giri"></table></div>
+      </div>
+      <div class="scheda">
+        <h3>Dettaglio giro</h3>
+        <div id="dettaglio-giro"><p class="vuoto">Seleziona un giro dall'elenco.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="pannello" id="p-simulatore" role="tabpanel" hidden>
+    <div class="intestazione-pannello">
+      <div>
+        <h2>Make or buy</h2>
+        <p>Confronto fra costo analitico della flotta aziendale e listino groupage del vettore, sulla singola
+          relazione. Le destinazioni isolane includono traghetto e maggiorazione di listino.</p>
+      </div>
+    </div>
+    <div class="griglia due">
+      <div class="scheda">
+        <h3>Parametri della relazione</h3>
+        <form id="modulo-simulatore" class="campi" style="flex-direction:column;align-items:stretch;gap:14px">
+          <label class="campo">Origine <select id="sim-origine"></select></label>
+          <label class="campo">Destinazione <select id="sim-destino"></select></label>
+          <div class="campi">
+            <label class="campo">Peso (kg) <input type="number" id="sim-peso" value="4000" min="1" step="any"></label>
+            <label class="campo">Volume (m³) <input type="number" id="sim-volume" value="18" min="0.1" step="any"></label>
+            <label class="campo">Pallet <input type="number" id="sim-pallet" value="10" min="0" step="1"></label>
+          </div>
+          <label class="campo">Mezzo <select id="sim-mezzo"></select></label>
+          <div class="campi">
+            <label class="campo">Sconto vettore % <input type="number" id="sim-sconto" value="12" min="0" max="60" step="any"></label>
+            <label class="campo riga"><input type="checkbox" id="sim-ar" checked> Andata e ritorno</label>
+          </div>
+          <button class="azione" type="submit" style="align-self:flex-start">Confronta</button>
+        </form>
+      </div>
+      <div class="scheda">
+        <h3>Esito</h3>
+        <div id="esito-simulatore"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="chiusura">
+  LogisticMaster · motore di calcolo in <code>app/core</code>, API FastAPI in <code>app/api</code>, 58 test.
+  I parametri di costo sono valori di mercato indicativi, da tarare sui dati reali dell’azienda.
+</footer>
+
+<script id="dati-scenario" type="application/json">__DATI_JSON__</script>
+<script>
+'use strict';
+const D = JSON.parse(document.getElementById('dati-scenario').textContent);
+
+/* ------------------------------------------------------------- formati */
+const eur = (v, d = 0) => (v ?? 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR', minimumFractionDigits: d, maximumFractionDigits: d });
+const num = (v, d = 0) => (v ?? 0).toLocaleString('it-IT', { minimumFractionDigits: d, maximumFractionDigits: d });
+const orario = (v) => {
+  if (v === null || v === undefined) return '—';
+  const h = Math.floor(v);
+  return `${String(h).padStart(2, '0')}:${String(Math.round((v - h) * 60)).padStart(2, '0')}`;
+};
+const testo = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function kpi(voce, cifra, glossa = '', tono = '') {
+  return `<div class="kpi ${tono}"><div class="voce">${voce}</div><div class="cifra">${cifra}</div>${
+    glossa ? `<div class="glossa">${glossa}</div>` : ''}</div>`;
+}
+
+function tabella(elemento, colonne, righe, opzioni = {}) {
+  const capi = colonne.map((c) => `<th class="${c.num ? 'num' : ''}">${c.t}</th>`).join('');
+  const corpo = righe.length
+    ? righe.map((r, i) => `<tr data-i="${i}" ${opzioni.scelta ? 'class="scelta" tabindex="0"' : ''}>${
+        colonne.map((c) => `<td class="${c.num ? 'num' : ''}">${c.v(r)}</td>`).join('')}</tr>`).join('')
+    : `<tr><td colspan="${colonne.length}"><p class="vuoto">Nessun dato</p></td></tr>`;
+  elemento.innerHTML = `<thead><tr>${capi}</tr></thead><tbody>${corpo}</tbody>`;
+  if (opzioni.alClick) {
+    elemento.querySelectorAll('tbody tr[data-i]').forEach((tr) => {
+      const attiva = () => {
+        elemento.querySelectorAll('tr').forEach((x) => x.removeAttribute('aria-selected'));
+        tr.setAttribute('aria-selected', 'true');
+        opzioni.alClick(righe[Number(tr.dataset.i)]);
+      };
+      tr.addEventListener('click', attiva);
+      tr.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); attiva(); } });
+    });
+  }
+}
+
+function barra(percentuale, tono = '') {
+  return `<span class="barra"><i class="${tono}" style="width:${Math.min(percentuale, 100)}%"></i></span>`;
+}
+
+function misura(percentuale) {
+  const classe = percentuale < 45 ? 'bassa' : percentuale >= 75 ? 'alta' : '';
+  return `<div class="misura">${barra(percentuale, classe)}<span>${num(percentuale, 1)}%</span></div>`;
+}
+
+/* -------------------------------------------------------- navigazione */
+const PANNELLI = [
+  ['cruscotto', 'Cruscotto'],
+  ['rete', 'Rete e siti'],
+  ['scorte', 'Scorte'],
+  ['trasferimenti', 'Trasferimenti'],
+  ['ordini', 'Ordini'],
+  ['piano', 'Piano di trasporto'],
+  ['simulatore', 'Make or buy'],
+];
+const nav = document.getElementById('sezioni');
+nav.innerHTML = PANNELLI.map(([id, etichetta], i) =>
+  `<button role="tab" data-p="${id}" aria-selected="${i === 0}">${etichetta}</button>`).join('');
+nav.addEventListener('click', (e) => {
+  const bottone = e.target.closest('button[data-p]');
+  if (!bottone) return;
+  nav.querySelectorAll('button').forEach((b) => b.setAttribute('aria-selected', String(b === bottone)));
+  PANNELLI.forEach(([id]) => { document.getElementById(`p-${id}`).hidden = id !== bottone.dataset.p; });
+});
+
+/* ------------------------------------------------------------ testata */
+const conteggi = D.stato.conteggi;
+document.getElementById('contatori').innerHTML = [
+  ['Siti', conteggi.siti], ['Articoli', conteggi.articoli],
+  ['Ordini', conteggi.ordini], ['Mezzi', conteggi.veicoli],
+].map(([e, v]) => `<div><b>${num(v)}</b><span>${e}</span></div>`).join('');
+
+/* ---------------------------------------------------------- cruscotto */
+(function cruscotto() {
+  const c = D.cruscotto, m = c.magazzino;
+  document.getElementById('kpi-cruscotto').innerHTML = [
+    kpi('Stabilimenti', num(c.rete.STABILIMENTO || 0), 'unità produttive'),
+    kpi('Siti di stoccaggio', num((c.rete.DEPOSITO || 0) + (c.rete.CROSSDOCK || 0)), 'depositi e cross-dock'),
+    kpi('Clienti serviti', num(c.rete.CLIENTE || 0), 'punti di consegna'),
+    kpi('Valore giacenze', eur(m.valore_giacenze_eur), 'capitale immobilizzato'),
+    kpi('Sotto punto di riordino', num(m.sotto_punto_riordino), `su ${num(m.coppie_sito_articolo)} combinazioni`, 'attenzione'),
+    kpi('Rischio rottura', num(m.rischio_rottura), 'copertura sotto il lead time', 'critico'),
+    kpi('Copertura media', `${num(m.copertura_media_giorni, 1)} gg`, 'giorni di stock'),
+    kpi('Ordini da pianificare', num(c.ordini.DA_PIANIFICARE || 0), 'in portafoglio'),
+  ].join('');
+
+  const massimo = Math.max(...c.per_sito.map((s) => s.valore_giacenze_eur));
+  document.getElementById('giacenze-sito').innerHTML = `<table><tbody>${c.per_sito.map((s) => `
+    <tr><td>${testo(s.sito)}${s.criticita
+        ? `<small>${s.criticita} ${s.criticita === 1 ? 'articolo' : 'articoli'} sotto riordino</small>` : ''}</td>
+      <td style="width:45%">${barra((s.valore_giacenze_eur / massimo) * 100)}</td>
+      <td class="num">${eur(s.valore_giacenze_eur)}</td></tr>`).join('')}</tbody></table>`;
+
+  tabella(document.getElementById('tab-criticita'), [
+    { t: 'Sito', v: (r) => testo(r.sito) },
+    { t: 'Articolo', v: (r) => `<span class="codice">${testo(r.articolo)}</span><small>${testo(r.descrizione)}</small>` },
+    { t: 'Copertura', num: true, v: (r) => `${num(r.copertura_giorni, 1)} gg` },
+    { t: 'Lead time', num: true, v: (r) => `${num(r.lead_time_giorni, 1)} gg` },
+    { t: 'Disponibile', num: true, v: (r) => num(r.disponibile) },
+    { t: 'Riordino a', num: true, v: (r) => num(r.punto_riordino) },
+    { t: 'Stato', v: (r) => `<span class="pillola ${r.copertura_giorni < r.lead_time_giorni ? 'p-critica' : 'p-alta'}">${
+        r.copertura_giorni < r.lead_time_giorni ? 'rottura' : 'sorveglianza'}</span>` },
+  ], D.cruscotto.criticita_top);
+})();
+
+/* --------------------------------------------------------------- rete */
+const COLORE_SITO = { STABILIMENTO: '#10395e', DEPOSITO: '#1a8f6b', CROSSDOCK: '#c2871f', CLIENTE: '#8ba1b5', FORNITORE: '#5b3d94' };
+const PROFILO_PENISOLA = [[45.80,6.85],[46.45,8.60],[46.60,10.50],[46.90,12.40],[46.50,13.60],[45.80,13.60],[45.55,13.00],[45.50,12.50],[44.90,12.50],[44.20,12.40],[43.90,12.75],[43.60,13.50],[42.90,14.10],[42.40,14.20],[41.90,15.40],[41.90,16.20],[41.40,16.00],[41.10,16.90],[40.50,17.95],[40.10,18.50],[39.80,18.35],[40.00,17.90],[40.40,17.20],[40.00,16.60],[39.40,17.10],[38.90,17.10],[38.50,16.60],[37.92,16.10],[38.10,15.62],[38.60,15.90],[39.40,16.00],[40.00,15.40],[40.60,14.90],[40.80,14.20],[41.20,13.60],[41.40,13.00],[41.80,12.40],[42.40,11.60],[43.00,10.50],[43.60,10.30],[44.20,9.70],[44.30,9.00],[44.00,8.20],[43.80,7.60],[44.70,6.90],[45.10,6.70]];
+const PROFILO_SICILIA = [[38.30,15.62],[37.50,15.10],[36.70,15.10],[36.65,14.30],[37.00,13.20],[37.50,12.50],[38.00,12.40],[38.10,13.40],[38.00,14.50]];
+const PROFILO_SARDEGNA = [[41.25,9.20],[40.90,9.60],[40.50,9.80],[39.90,9.70],[39.20,9.60],[38.90,8.80],[39.20,8.40],[39.90,8.40],[40.60,8.20],[40.90,8.20]];
+
+function proietta(lat, lon) {
+  const LAT_MIN = 36.4, LAT_MAX = 47.2, LON_MIN = 6.4, LON_MAX = 18.6;
+  return [((lon - LON_MIN) / (LON_MAX - LON_MIN)) * 360 + 20, 540 - ((lat - LAT_MIN) / (LAT_MAX - LAT_MIN)) * 520];
+}
+const poligono = (p) => `<polygon points="${p.map(([a, o]) => proietta(a, o).map((v) => v.toFixed(1)).join(',')).join(' ')}"
+  fill="var(--surface)" stroke="var(--border-forte)" stroke-width="1"/>`;
+
+function disegnaMappa(siti, giri = []) {
+  const perId = new Map(D.siti.map((s) => [s.id, s]));
+  const rotte = giri.flatMap((g) => {
+    const seq = [g.deposito_id, ...g.sequenza, g.deposito_id];
+    return seq.slice(1).map((b, i) => {
+      const A = perId.get(seq[i]), B = perId.get(b);
+      if (!A || !B) return '';
+      const [x1, y1] = proietta(A.lat, A.lon), [x2, y2] = proietta(B.lat, B.lon);
+      return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--blu-vivo)" stroke-width="1" opacity=".5"/>`;
+    });
+  }).join('');
+  const punti = siti.map((s) => {
+    const [x, y] = proietta(s.lat, s.lon);
+    const r = s.tipo === 'STABILIMENTO' ? 6 : s.tipo === 'DEPOSITO' ? 5.5 : s.tipo === 'CROSSDOCK' ? 4.5 : 3;
+    const destra = x > 260;
+    const etichetta = s.tipo === 'CLIENTE' ? '' :
+      `<text x="${destra ? x - r - 3 : x + r + 3}" y="${y + 3.4}" font-size="8.5" font-family="IBM Plex Mono, monospace"
+        text-anchor="${destra ? 'end' : 'start'}" fill="var(--ink)" stroke="var(--surface-alt)" stroke-width="2.5"
+        paint-order="stroke">${testo(s.codice)}</text>`;
+    return `<g><circle cx="${x}" cy="${y}" r="${r}" fill="${COLORE_SITO[s.tipo]}" stroke="var(--surface-alt)" stroke-width="1.2">
+      <title>${testo(s.nome)} — ${testo(s.comune)} (${testo(s.provincia)})</title></circle>${etichetta}</g>`;
+  }).join('');
+  document.getElementById('mappa-rete').innerHTML =
+    poligono(PROFILO_PENISOLA) + poligono(PROFILO_SICILIA) + poligono(PROFILO_SARDEGNA) + rotte + punti;
+}
+
+function mostraRete() {
+  const filtro = document.getElementById('filtro-sito').value;
+  const siti = filtro ? D.siti.filter((s) => s.tipo === filtro) : D.siti;
+  disegnaMappa(siti);
+  tabella(document.getElementById('tab-siti'), [
+    { t: 'Codice', v: (s) => `<span class="codice">${testo(s.codice)}</span>` },
+    { t: 'Sito', v: (s) => `${testo(s.nome)}<small>${testo(s.comune)} (${testo(s.provincia)})</small>` },
+    { t: 'Tipo', v: (s) => `<span class="pillola p-neutro">${s.tipo.toLowerCase()}</span>` },
+    { t: 'Capacità', num: true, v: (s) => (s.capacita_pallet ? `${num(s.capacita_pallet)} pl` : '—') },
+    { t: 'Finestra', num: true, v: (s) => `${orario(s.apertura)}–${orario(s.chiusura)}` },
+  ], siti);
+}
+document.getElementById('filtro-sito').addEventListener('change', mostraRete);
+mostraRete();
+
+(function matrice() {
+  const m = D.matrice_rete;
+  document.getElementById('tab-matrice').innerHTML =
+    `<thead><tr><th>Da / A</th>${m.siti.map((s) => `<th class="num">${testo(s.codice)}</th>`).join('')}</tr></thead>
+     <tbody>${m.siti.map((s, i) => `<tr><td><span class="codice">${testo(s.codice)}</span><small>${testo(s.nome)}</small></td>${
+       m.km[i].map((km, j) => `<td class="num">${i === j ? '—' : num(km)}</td>`).join('')}</tr>`).join('')}</tbody>`;
+})();
+
+/* ------------------------------------------------------------- scorte */
+let soloCritiche = false;
+function mostraScorte() {
+  const righe = soloCritiche ? D.scorte.righe.filter((r) => r.sotto_riordino) : D.scorte.righe;
+  document.getElementById('kpi-scorte').innerHTML = [
+    kpi('Combinazioni', num(righe.length), 'sito × articolo'),
+    kpi('Sotto riordino', num(D.scorte.sotto_riordino), 'da reintegrare', 'attenzione'),
+    kpi('Valore a stock', eur(D.scorte.valore_giacenze), 'sull’intera rete'),
+  ].join('');
+  tabella(document.getElementById('tab-scorte'), [
+    { t: 'Sito', v: (r) => `<span class="codice">${testo(r.sito_codice)}</span><small>${testo(r.sito_nome)}</small>` },
+    { t: 'Articolo', v: (r) => `<span class="codice">${testo(r.articolo_codice)}</span><small>${testo(r.articolo_descrizione)}</small>` },
+    { t: 'ABC', v: (r) => `<span class="pillola p-neutro">${r.classe_abc}</span>` },
+    { t: 'Disponibile', num: true, v: (r) => num(r.disponibile) },
+    { t: 'Domanda/gg', num: true, v: (r) => num(r.domanda_media_giorno, 1) },
+    { t: 'Copertura', num: true, v: (r) => `${num(r.copertura_giorni, 1)} gg` },
+    { t: 'Scorta sic.', num: true, v: (r) => num(r.scorta_sicurezza) },
+    { t: 'Punto riordino', num: true, v: (r) => num(r.punto_riordino) },
+    { t: 'Lotto', num: true, v: (r) => num(r.lotto_economico) },
+    { t: 'Servizio', num: true, v: (r) => `${num(r.livello_servizio * 100)}%` },
+    { t: 'Stato', v: (r) => `<span class="pillola ${r.sotto_riordino ? 'p-critica' : 'p-ok'}">${r.sotto_riordino ? 'riordinare' : 'ok'}</span>` },
+  ], righe);
+}
+document.getElementById('filtro-scorte').addEventListener('click', (e) => {
+  soloCritiche = !soloCritiche;
+  e.currentTarget.setAttribute('aria-pressed', String(soloCritiche));
+  mostraScorte();
+});
+mostraScorte();
+
+/* ----------------------------------------------------- trasferimenti */
+(function trasferimenti() {
+  const t = D.trasferimenti;
+  document.getElementById('kpi-trasferimenti').innerHTML = [
+    kpi('Proposte', num(t.totale), 'movimenti suggeriti'),
+    kpi('Coperte dalla rete', num(t.da_rete), 'senza nuova produzione', 'positivo'),
+    kpi('A produzione', num(t.da_produzione), 'rete senza eccedenze', t.da_produzione ? 'attenzione' : 'positivo'),
+    kpi('Valore movimentato', eur(t.valore_movimentato), 'merce trasferita'),
+  ].join('');
+  tabella(document.getElementById('tab-trasferimenti'), [
+    { t: 'Urgenza', v: (p) => `<span class="pillola p-${p.urgenza.toLowerCase()}">${p.urgenza.toLowerCase()}</span>` },
+    { t: 'Articolo', v: (p) => `<span class="codice">${testo(p.articolo_codice)}</span><small>${testo(p.articolo_descrizione)}</small>` },
+    { t: 'Da', v: (p) => `<span class="codice">${testo(p.origine_codice)}</span><small>${testo(p.origine_nome)}</small>` },
+    { t: 'A', v: (p) => `<span class="codice">${testo(p.destino_codice)}</span><small>${testo(p.destino_nome)}</small>` },
+    { t: 'Quantità', num: true, v: (p) => num(p.quantita) },
+    { t: 'Pallet', num: true, v: (p) => num(p.pallet, 1) },
+    { t: 'Peso', num: true, v: (p) => `${num(p.peso_kg)} kg` },
+    { t: 'Distanza', num: true, v: (p) => (p.km ? `${num(p.km)} km` : '—') },
+    { t: 'Valore', num: true, v: (p) => eur(p.valore) },
+  ], t.proposte);
+})();
+
+/* ------------------------------------------------------------- ordini */
+(function ordini() {
+  const regioni = [...new Set(D.ordini.map((o) => o.destino_provincia))].sort();
+  const selettore = document.getElementById('filtro-ordini');
+  selettore.innerHTML += regioni.map((p) => `<option value="${p}">${p}</option>`).join('');
+  const colonne = [
+    { t: 'Riferimento', v: (o) => `<span class="codice">${testo(o.riferimento)}</span>` },
+    { t: 'Data', num: true, v: (o) => o.data_richiesta },
+    { t: 'Partenza', v: (o) => testo(o.origine_nome || '—') },
+    { t: 'Destinazione', v: (o) => `${testo(o.destino_nome)}<small>${testo(o.destino_comune)} (${testo(o.destino_provincia)})</small>` },
+    { t: 'Righe', num: true, v: (o) => num(o.righe.length) },
+    { t: 'Peso', num: true, v: (o) => `${num(o.peso_kg)} kg` },
+    { t: 'Volume', num: true, v: (o) => `${num(o.volume_m3, 2)} m³` },
+    { t: 'Priorità', num: true, v: (o) => o.priorita },
+    { t: 'Stato', v: (o) => `<span class="pillola p-neutro">${o.stato.toLowerCase().replace('_', ' ')}</span>` },
+  ];
+  const disegna = () => {
+    const p = selettore.value;
+    tabella(document.getElementById('tab-ordini'), colonne,
+      p ? D.ordini.filter((o) => o.destino_provincia === p) : D.ordini);
+  };
+  selettore.addEventListener('change', disegna);
+  disegna();
+})();
+
+/* -------------------------------------------------------------- piano */
+(function piano() {
+  const p = D.piano, k = p.kpi, c = p.confronto, b = p.scenario_base;
+  document.getElementById('kpi-piano').innerHTML = [
+    kpi('Spedizioni', num(k.spedizioni), 'ordini pianificati'),
+    kpi('Giri', num(k.giri), `${num(k.fermate)} fermate`),
+    kpi('Km totali', num(k.km_totali), `${num(k.km_per_fermata, 1)} km per fermata`),
+    kpi('Costo di piano', eur(k.costo_totale_eur), 'tutto in flotta propria'),
+    kpi('Costo ottimizzato', eur(k.costo_ottimizzato_eur), 'con scelta del vettore', 'positivo'),
+    kpi('Costo per km', eur(k.costo_per_km, 2), 'media di piano'),
+    kpi('Costo per pallet', eur(k.costo_per_pallet, 2), `${num(k.pallet_totali, 1)} pallet`),
+    kpi('Costo per ton-km', eur(k.costo_per_ton_km, 2), `${num(k.ton_km)} ton-km`),
+    kpi('Saturazione media', `${num(k.saturazione_media_pct, 1)}%`, `${num(k.giri_sottosaturi)} giri sottosaturi`, 'attenzione'),
+    kpi('CO₂ stimata', `${num(k.co2_kg)} kg`, `${num(k.co2_g_per_ton_km, 1)} g per ton-km`),
+    kpi('Viaggi su più giorni', num(k.giri_multigiorno), `${eur(k.costo_traghetti_eur)} di traghetti`),
+  ].join('');
+
+  document.getElementById('testo-base').textContent =
+    `Senza consolidamento servirebbero ${num(b.missioni)} missioni dedicate: ${num(b.km)} km, ` +
+    `${eur(b.costo_eur)} e ${num(b.co2_kg)} kg di CO₂.`;
+  document.getElementById('leve-risparmio').innerHTML = [
+    ['Risparmio totale', eur(c.costo_risparmiato_eur), `${num(c.costo_risparmiato_pct, 1)}% del costo di partenza`],
+    ['Da consolidamento', eur(c.risparmio_da_consolidamento_eur), `${num(c.missioni_evitate)} missioni evitate`],
+    ['Da scelta del vettore', eur(c.risparmio_da_make_or_buy_eur), 'giro per giro'],
+    ['Km risparmiati', num(c.km_risparmiati), `${num(c.km_risparmiati_pct, 1)}% in meno`],
+    ['CO₂ evitata', `${num(c.co2_risparmiata_kg)} kg`, 'stessa merce consegnata'],
+  ].map(([v, cifra, glossa]) =>
+    `<div class="leva"><div class="voce">${v}</div><div class="cifra">${cifra}</div><div class="glossa">${glossa}</div></div>`).join('');
+
+  tabella(document.getElementById('tab-giri'), [
+    { t: 'Giro', v: (g) => `<span class="codice">${testo(g.id)}</span><small>${g.data}</small>` },
+    { t: 'Partenza', v: (g) => `<span class="codice">${testo(g.origine_codice)}</span><small>${testo(g.veicolo_descrizione)}</small>` },
+    { t: 'Ferm.', num: true, v: (g) => num(g.sequenza.length) },
+    { t: 'Km', num: true, v: (g) => num(g.km) },
+    { t: 'Durata', num: true, v: (g) => `${num(g.durata_ore, 1)} h${g.giorni_impegno > 1 ? `<small>${num(g.giorni_impegno)} giorni</small>` : ''}` },
+    { t: 'Saturazione', v: (g) => misura(g.saturazione_pct) },
+    { t: 'Costo', num: true, v: (g) => eur(g.costo.totale) },
+    { t: 'Esecuzione', v: (g) => `<span class="pillola p-${g.scelta_consigliata.toLowerCase()}">${
+        g.scelta_consigliata === 'PROPRIO' ? 'flotta' : 'vettore'}</span>` },
+  ], p.giri, { scelta: true, alClick: mostraGiro });
+
+  function mostraGiro(g) {
+    disegnaMappa(D.siti, [g]);
+    const tappe = g.cronoprogramma.map((t, i) => {
+      const nome = i < g.fermate_nomi.length ? g.fermate_nomi[i] : `Rientro · ${g.origine_nome}`;
+      return `<tr><td class="num">${i + 1}</td><td>${testo(nome)}</td><td class="num">g${t.giorno}</td>
+        <td class="num">${orario(t.arrivo)}</td><td class="num">${orario(t.partenza)}</td>
+        <td class="num">${num(t.km_progressivi)}</td></tr>`;
+    }).join('');
+    const v = g.costo;
+    const voce = (etichetta, valore) => valore ? `<div><span>${etichetta}</span><span>${eur(valore, 2)}</span></div>` : '';
+    document.getElementById('dettaglio-giro').innerHTML = `
+      <dl class="coppie">
+        <dt>Giro</dt><dd><span class="codice">${testo(g.id)}</span> · ${g.data}</dd>
+        <dt>Partenza</dt><dd>${testo(g.origine_nome)}</dd>
+        <dt>Mezzo</dt><dd>${testo(g.veicolo_descrizione)}</dd>
+        <dt>Carico</dt><dd>${num(g.peso_kg)} kg · ${num(g.volume_m3, 1)} m³ · ${num(g.pallet, 1)} pallet</dd>
+        <dt>Saturazione</dt><dd>${num(g.saturazione_pct, 1)}% sul vincolo più stretto</dd>
+        <dt>Percorrenza</dt><dd>${num(g.km)} km · guida ${num(g.ore_guida, 1)} h · impegno ${num(g.giorni_impegno)} giorno/i</dd>
+        ${g.ore_traghetto ? `<dt>Traghetto</dt><dd>${num(g.ore_traghetto, 1)} h di traversata</dd>` : ''}
+        <dt>CO₂</dt><dd>${num(g.co2_kg)} kg</dd>
+      </dl>
+      <h3>Cronoprogramma</h3>
+      <div class="tabella-scroll"><table><thead><tr><th class="num">#</th><th>Fermata</th><th class="num">Giorno</th>
+        <th class="num">Arrivo</th><th class="num">Partenza</th><th class="num">Km</th></tr></thead>
+        <tbody>${tappe}</tbody></table></div>
+      <h3 style="margin-top:16px">Struttura del costo</h3>
+      <div class="voci-costo">
+        ${voce('Carburante', v.carburante)}${voce('Pedaggi', v.pedaggi)}${voce('Manutenzione', v.manutenzione)}
+        ${voce('Personale', v.personale)}${voce('Costi fissi del mezzo', v.costi_fissi)}${voce('Traghetti', v.traghetti)}
+        <div class="somma"><span>Totale in flotta propria</span><span>${eur(v.totale, 2)}</span></div>
+        <div><span>Alternativa in conto terzi</span><span>${eur(g.costo_conto_terzi, 2)}</span></div>
+      </div>`;
+  }
+  mostraGiro(p.giri[0]);
+  document.querySelector('#tab-giri tbody tr')?.setAttribute('aria-selected', 'true');
+})();
+
+/* --------------------------------------------------- simulatore costi */
+/* Modello di costo replicato dal motore (app/core/costi.py) per rendere
+   il confronto interattivo anche nella demo statica. */
+const GASOLIO = 1.62, CO2_LITRO = 2.64, FUEL = 0.06, ISOLE = 0.22, MINIMO = 32, KG_PER_M3 = 250;
+const SCAGLIONI = [[100, 22], [300, 16.5], [500, 13.8], [1000, 11.2], [2500, 9.1], [5000, 7.6], [Infinity, 6.4]];
+const COEFFICIENTI = [[100, .62], [250, .80], [450, 1.00], [700, 1.24], [1000, 1.48], [Infinity, 1.75]];
+const perFascia = (valore, tabella) => tabella.find(([soglia]) => valore <= soglia)[1];
+
+function costoFlotta(profilo, km, oreGuida, oreSosta, giorni, traghetti) {
+  return {
+    carburante: (km / profilo.consumo_km_litro) * GASOLIO,
+    pedaggi: km * profilo.pedaggio_eur_km,
+    manutenzione: km * profilo.manutenzione_eur_km,
+    personale: (oreGuida + oreSosta) * profilo.costo_autista_ora,
+    costi_fissi: profilo.costo_fisso_giorno * giorni,
+    traghetti,
+  };
+}
+function costoVettore(pesoKg, volumeM3, km, sconto, isole) {
+  const peso = Math.max(pesoKg, volumeM3 * KG_PER_M3);
+  let netto = (peso / 100) * perFascia(peso, SCAGLIONI) * perFascia(km, COEFFICIENTI) * (1 - sconto);
+  if (isole) netto *= 1 + ISOLE;
+  return Math.max(netto, MINIMO) * (1 + FUEL);
+}
+
+(function simulatore() {
+  const interni = D.siti.filter((s) => s.tipo !== 'CLIENTE');
+  const opzione = (s) => `<option value="${s.id}">${testo(s.codice)} · ${testo(s.nome)}</option>`;
+  document.getElementById('sim-origine').innerHTML = interni.map(opzione).join('');
+  document.getElementById('sim-destino').innerHTML = D.siti.map(opzione).join('');
+  document.getElementById('sim-mezzo').innerHTML = D.profili
+    .map((p) => `<option value="${p.codice}" ${p.codice === 'MOTRICE_180' ? 'selected' : ''}>${testo(p.descrizione)} · ${num(p.portata_kg)} kg · ${p.posti_pallet} pl</option>`).join('');
+  const cagliari = D.siti.find((s) => s.provincia === 'CA' && s.tipo === 'CLIENTE');
+  if (cagliari) document.getElementById('sim-destino').value = String(cagliari.id);
+
+  document.getElementById('modulo-simulatore').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const origine = Number(document.getElementById('sim-origine').value);
+    const destino = Number(document.getElementById('sim-destino').value);
+    const uscita = document.getElementById('esito-simulatore');
+    if (origine === destino) {
+      uscita.innerHTML = '<p class="vuoto">Origine e destinazione coincidono: scegli due siti diversi.</p>';
+      return;
+    }
+    const tratta = D.tratte[`${origine}-${destino}`];
+    const profilo = D.parametri_costo.profili[document.getElementById('sim-mezzo').value];
+    const peso = Number(document.getElementById('sim-peso').value);
+    const volume = Number(document.getElementById('sim-volume').value);
+    const pallet = Number(document.getElementById('sim-pallet').value);
+    const sconto = Number(document.getElementById('sim-sconto').value) / 100;
+    const fattore = document.getElementById('sim-ar').checked ? 2 : 1;
+
+    const km = tratta.km * fattore;
+    const oreGuida = tratta.ore * fattore;
+    const oreSosta = 0.33 + 0.035 * pallet;
+    const giorni = Math.max(1, Math.ceil(oreGuida / 9));
+    const traghetti = tratta.traghetto ? tratta.traghetto.costo_eur * fattore : 0;
+    const proprio = costoFlotta(profilo, km, oreGuida, oreSosta, giorni, traghetti);
+    const totaleProprio = Object.values(proprio).reduce((a, b) => a + b, 0);
+    const terzi = costoVettore(peso, volume, km, sconto, Boolean(tratta.traghetto));
+    const vinceFlotta = totaleProprio <= terzi;
+    const nomi = new Map(D.siti.map((s) => [s.id, s]));
+    const voce = (etichetta, valore) => valore ? `<div><span>${etichetta}</span><span>${eur(valore, 2)}</span></div>` : '';
+
+    uscita.innerHTML = `
+      <p class="nota">${testo(nomi.get(origine).nome)} → ${testo(nomi.get(destino).nome)} ·
+        ${num(km)} km · ${num(oreGuida, 1)} h di guida · ${testo(profilo.descrizione)}
+        ${tratta.traghetto ? `· traghetto ${testo(tratta.traghetto.tratta)} (${num(tratta.traghetto.ore, 1)} h)` : ''}
+        ${giorni > 1 ? `· ${giorni} giorni di impegno` : ''}</p>
+      <div class="confronto">
+        <div class="lato ${vinceFlotta ? 'vince' : ''}">
+          <h4>Flotta propria</h4>
+          <div class="voci-costo">
+            ${voce('Carburante', proprio.carburante)}${voce('Pedaggi', proprio.pedaggi)}
+            ${voce('Manutenzione', proprio.manutenzione)}${voce('Personale', proprio.personale)}
+            ${voce('Costi fissi', proprio.costi_fissi)}${voce('Traghetti', proprio.traghetti)}
+            <div class="somma"><span>Totale</span><span>${eur(totaleProprio, 2)}</span></div>
+          </div>
+        </div>
+        <div class="lato ${vinceFlotta ? '' : 'vince'}">
+          <h4>Vettore terzo</h4>
+          <div class="voci-costo">
+            <div><span>Peso tassabile</span><span>${num(Math.max(peso, volume * KG_PER_M3))} kg</span></div>
+            <div><span>Sconto applicato</span><span>${num(sconto * 100)}%</span></div>
+            <div><span>Fuel surcharge</span><span>${num(FUEL * 100)}%</span></div>
+            ${tratta.traghetto ? `<div><span>Maggiorazione isole</span><span>${num(ISOLE * 100)}%</span></div>` : ''}
+            <div class="somma"><span>Totale</span><span>${eur(terzi, 2)}</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="esito">
+        <div class="voce" style="font-size:10.5px;letter-spacing:.085em;text-transform:uppercase;color:var(--ink-tenue)">Scelta consigliata</div>
+        <div class="cifra">${vinceFlotta ? 'Flotta propria' : 'Vettore terzo'}</div>
+        <div class="glossa" style="font-size:12px;color:var(--ink-tenue)">Differenza ${eur(Math.abs(totaleProprio - terzi), 2)} ·
+          saturazione peso ${num((peso / profilo.portata_kg) * 100, 1)}% ·
+          CO₂ ${num((km / profilo.consumo_km_litro) * CO2_LITRO)} kg</div>
+      </div>`;
+  });
+  document.getElementById('modulo-simulatore').dispatchEvent(new Event('submit'));
+})();
+</script>

@@ -285,6 +285,18 @@ class TestGiri(unittest.TestCase):
         self.assertEqual(simulazione["violazioni"], [])
         self.assertGreater(simulazione["costo_traghetti"], 0)
 
+    def test_l_orologio_resta_nelle_24_ore_e_il_giorno_avanza(self):
+        # Traversata per la Sardegna: la missione supera la mezzanotte e il
+        # cronoprogramma deve passare al giorno successivo, non segnare le 24.
+        matrice = MatriceDistanze([Punto(0, 45.50, 9.33), CAGLIARI])
+        simulazione = simula_giro(0, [Fermata("F", 5, 3000, 12, 6, 8.0, 17.0)], matrice)
+        giorni = [t["giorno"] for t in simulazione["cronoprogramma"]]
+        for tappa in simulazione["cronoprogramma"]:
+            self.assertGreaterEqual(tappa["arrivo"], 0.0)
+            self.assertLess(tappa["arrivo"], 24.0)
+        self.assertEqual(giorni, sorted(giorni))
+        self.assertGreaterEqual(simulazione["giorni_impegno"], max(giorni))
+
     def test_il_costo_del_giro_e_coerente_con_i_km(self):
         giri = ottimizza_giri(0, self.fermate, self.matrice)
         for giro in giri:

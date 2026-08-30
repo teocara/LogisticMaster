@@ -158,6 +158,12 @@ class _StatoGuida:
         self.ore_traghetto = 0.0
 
     # -- avanzamenti elementari -------------------------------------------
+    def _normalizza(self) -> None:
+        """Riporta l'orologio nelle 24 ore, avanzando il giorno di missione."""
+        while self.orologio >= 24.0:
+            self.orologio -= 24.0
+            self.giorno += 1
+
     def riposo_giornaliero(self) -> None:
         """Chiude la giornata e riparte il mattino successivo."""
         self.giorno += 1
@@ -172,6 +178,7 @@ class _StatoGuida:
         self.servizio_giorno += PAUSA_OBBLIGATORIA_ORE
         self.ore_pausa += PAUSA_OBBLIGATORIA_ORE
         self.guida_continuata = 0.0
+        self._normalizza()
 
     def guida(self, ore: float) -> None:
         """Percorre le ore di guida indicate, inserendo pause e riposi."""
@@ -194,6 +201,7 @@ class _StatoGuida:
             self.guida_continuata += quota
             self.ore_guida += quota
             residuo -= quota
+            self._normalizza()
 
     def traversata(self, ore: float) -> None:
         """Traversata in traghetto: tempo di riposo, non di guida."""
@@ -204,9 +212,7 @@ class _StatoGuida:
             # Una traversata lunga vale come riposo giornaliero.
             self.guida_giorno = 0.0
             self.servizio_giorno = 0.0
-        if self.orologio >= 24.0:
-            self.giorno += int(self.orologio // 24)
-            self.orologio %= 24.0
+        self._normalizza()
 
     def attendi_finestra(self, apertura: float, chiusura: float) -> None:
         """Attende l'apertura del sito, rinviando al giorno dopo se serve."""
@@ -217,11 +223,13 @@ class _StatoGuida:
             self.ore_attesa += attesa
             self.servizio_giorno += attesa
             self.orologio = apertura
+        self._normalizza()
 
     def servi(self, ore: float) -> None:
         self.orologio += ore
         self.servizio_giorno += ore
         self.ore_sosta += ore
+        self._normalizza()
 
 
 def simula_giro(

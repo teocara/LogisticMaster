@@ -1,0 +1,4 @@
+# Dipendenze per l'esecuzione dei test.
+-r requirements.txt
+# Il TestClient di Starlette gira su httpx: serve solo alle prove delle API.
+httpx>=0.27

@@ -43,15 +43,21 @@ curl -X POST localhost:8000/api/admin/ricarica-demo
 Test:
 
 ```bash
+pip install -r requirements-dev.txt          # aggiunge httpx per il TestClient
 python -m unittest discover -s tests -v      # 87 test
 ```
 
-## Demo statica
+## Demo online
 
-Per mostrare la piattaforma senza avviare il server (una presentazione, un
-invio via mail) si genera una copia navigabile in un unico file HTML, con lo
-scenario gia' calcolato dal motore e il simulatore make or buy funzionante in
-pagina:
+**<https://teocara.github.io/LogisticMaster/>**
+
+E' l'interfaccia completa, navigabile senza installare nulla: lo scenario e'
+gia' calcolato dal motore e il simulatore make or buy ricalcola i costi in
+pagina. La pubblicazione e' automatica: a ogni push il workflow
+`.github/workflows/pages.yml` esegue i test, rigenera la demo con il motore
+corrente e la mette online, cosi' la pagina non puo' divergere dal codice.
+
+Per costruirla in locale (una presentazione, un invio via mail):
 
 ```bash
 python demo/costruisci.py     # produce demo/logisticmaster-demo.html

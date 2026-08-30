@@ -37,7 +37,7 @@ jobs:
           cache: pip
 
       - name: Installa le dipendenze
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-dev.txt
 
       - name: Esegui i test
         run: python -m unittest discover -s tests

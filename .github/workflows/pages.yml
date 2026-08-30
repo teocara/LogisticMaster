@@ -1,0 +1,69 @@
+# Costruisce la demo statica e la pubblica su GitHub Pages.
+# La pagina viene rigenerata a ogni push: i numeri mostrati escono sempre
+# dal motore di calcolo corrente, non da una copia salvata a mano.
+name: Demo su GitHub Pages
+
+on:
+  push:
+    branches: [claude/logistics-optimization-platform-h9fa7r]
+    paths:
+      - "app/**"
+      - "demo/**"
+      - ".github/workflows/pages.yml"
+      - "requirements.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Una pubblicazione alla volta; le richieste in coda vengono sostituite
+# dalla piu' recente senza interrompere quella in corso.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  costruisci:
+    name: Costruisci la demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Installa le dipendenze
+        run: pip install -r requirements.txt
+
+      - name: Esegui i test
+        run: python -m unittest discover -s tests
+
+      - name: Genera la demo
+        run: |
+          python demo/costruisci.py
+          mkdir -p _sito
+          cp demo/logisticmaster-demo.html _sito/index.html
+          touch _sito/.nojekyll
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _sito
+
+  pubblica:
+    name: Pubblica
+    needs: costruisci
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.pubblicazione.outputs.page_url }}
+    steps:
+      - id: pubblicazione
+        uses: actions/deploy-pages@v4

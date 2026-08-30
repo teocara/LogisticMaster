@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LogisticMaster - Ottimizzazione logistica multi-sito</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<header class="intestazione">
+  <div class="marchio">
+    <span class="logo">LM</span>
+    <div>
+      <h1>LogisticMaster</h1>
+      <p>Ottimizzazione dei flussi logistici e di trasporto per la produzione multi-sito</p>
+    </div>
+  </div>
+  <div class="stato-sistema" id="stato-sistema">Connessione…</div>
+</header>
+
+<nav class="navigazione" id="navigazione">
+  <button class="voce attiva" data-sezione="cruscotto">Cruscotto</button>
+  <button class="voce" data-sezione="rete">Rete e siti</button>
+  <button class="voce" data-sezione="scorte">Scorte</button>
+  <button class="voce" data-sezione="trasferimenti">Trasferimenti inter-sito</button>
+  <button class="voce" data-sezione="ordini">Ordini</button>
+  <button class="voce" data-sezione="piano">Piano di trasporto</button>
+  <button class="voce" data-sezione="simulatore">Make or buy</button>
+</nav>
+
+<main>
+  <!-- ------------------------------------------------------ CRUSCOTTO -->
+  <section id="sezione-cruscotto" class="sezione attiva">
+    <div class="titolo-sezione">
+      <h2>Cruscotto direzionale</h2>
+      <button class="bottone secondario" id="aggiorna-cruscotto">Aggiorna</button>
+    </div>
+    <div class="griglia-kpi" id="kpi-cruscotto"></div>
+    <div class="due-colonne">
+      <div class="scheda">
+        <h3>Valore delle giacenze per sito</h3>
+        <div id="grafico-siti" class="grafico-barre"></div>
+      </div>
+      <div class="scheda">
+        <h3>Criticità di copertura</h3>
+        <div class="tabella-contenitore"><table id="tabella-criticita"></table></div>
+      </div>
+    </div>
+    <div class="scheda">
+      <h3>KPI dell'ultimo piano salvato</h3>
+      <div id="kpi-ultimo-piano" class="griglia-kpi compatta"></div>
+    </div>
+  </section>
+
+  <!-- ----------------------------------------------------------- RETE -->
+  <section id="sezione-rete" class="sezione">
+    <div class="titolo-sezione">
+      <h2>Rete logistica</h2>
+      <div class="filtri">
+        <label>Tipo sito
+          <select id="filtro-tipo-sito">
+            <option value="">Tutti</option>
+            <option value="STABILIMENTO">Stabilimenti</option>
+            <option value="DEPOSITO">Depositi</option>
+            <option value="CROSSDOCK">Cross-dock</option>
+            <option value="CLIENTE">Clienti</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div class="due-colonne">
+      <div class="scheda">
+        <h3>Mappa della rete</h3>
+        <svg id="mappa" viewBox="0 0 460 620" class="mappa"></svg>
+        <div class="legenda">
+          <span><i class="pallino stabilimento"></i>Stabilimento</span>
+          <span><i class="pallino deposito"></i>Deposito</span>
+          <span><i class="pallino crossdock"></i>Cross-dock</span>
+          <span><i class="pallino cliente"></i>Cliente</span>
+        </div>
+      </div>
+      <div class="scheda">
+        <h3>Elenco siti</h3>
+        <div class="tabella-contenitore alta"><table id="tabella-siti"></table></div>
+      </div>
+    </div>
+    <div class="scheda">
+      <h3>Matrice delle distanze fra siti interni (km)</h3>
+      <div class="tabella-contenitore"><table id="tabella-matrice"></table></div>
+    </div>
+  </section>
+
+  <!-- --------------------------------------------------------- SCORTE -->
+  <section id="sezione-scorte" class="sezione">
+    <div class="titolo-sezione">
+      <h2>Analisi delle scorte</h2>
+      <div class="filtri">
+        <label class="interruttore"><input type="checkbox" id="solo-critiche"> Solo sotto punto di riordino</label>
+        <button class="bottone secondario" id="aggiorna-scorte">Ricalcola</button>
+      </div>
+    </div>
+    <div class="griglia-kpi compatta" id="kpi-scorte"></div>
+    <div class="scheda">
+      <p class="nota">Scorta di sicurezza calcolata con variabilita' congiunta di domanda e lead time
+        (SS = z · √(LT·σ²<sub>domanda</sub> + domanda²·σ²<sub>LT</sub>)); il lotto di riordino usa la formula di Wilson.</p>
+      <div class="tabella-contenitore alta"><table id="tabella-scorte"></table></div>
+    </div>
+  </section>
+
+  <!-- -------------------------------------------------- TRASFERIMENTI -->
+  <section id="sezione-trasferimenti" class="sezione">
+    <div class="titolo-sezione">
+      <h2>Riequilibrio della rete</h2>
+      <div class="filtri">
+        <label>Distanza massima (km) <input type="number" id="km-massimi" value="900" min="50" step="any"></label>
+        <button class="bottone" id="calcola-trasferimenti">Calcola proposte</button>
+      </div>
+    </div>
+    <div class="griglia-kpi compatta" id="kpi-trasferimenti"></div>
+    <div class="scheda">
+      <p class="nota">Prima di riordinare a produzione, la piattaforma copre i fabbisogni con le eccedenze
+        degli altri siti, scegliendo ogni volta l'origine più vicina che resta sopra il proprio punto di riordino.</p>
+      <div class="tabella-contenitore alta"><table id="tabella-trasferimenti"></table></div>
+    </div>
+  </section>
+
+  <!-- --------------------------------------------------------- ORDINI -->
+  <section id="sezione-ordini" class="sezione">
+    <div class="titolo-sezione">
+      <h2>Portafoglio ordini</h2>
+      <div class="filtri">
+        <label>Stato
+          <select id="filtro-stato-ordine">
+            <option value="">Tutti</option>
+            <option value="DA_PIANIFICARE" selected>Da pianificare</option>
+            <option value="PIANIFICATO">Pianificati</option>
+            <option value="IN_TRANSITO">In transito</option>
+            <option value="CONSEGNATO">Consegnati</option>
+          </select>
+        </label>
+        <button class="bottone secondario" id="aggiorna-ordini">Aggiorna</button>
+      </div>
+    </div>
+    <div class="scheda">
+      <div class="tabella-contenitore alta"><table id="tabella-ordini"></table></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- PIANO -->
+  <section id="sezione-piano" class="sezione">
+    <div class="titolo-sezione">
+      <h2>Piano di trasporto ottimizzato</h2>
+      <div class="filtri">
+        <label>Dal <input type="date" id="piano-data-da"></label>
+        <label>Al <input type="date" id="piano-data-a"></label>
+        <label>Mezzo
+          <select id="piano-profilo"></select>
+        </label>
+        <label>Partenza <input type="number" id="piano-ora" value="6" min="0" max="22" step="any"></label>
+        <label>Sconto vettore % <input type="number" id="piano-sconto" value="12" min="0" max="60" step="1"></label>
+        <label class="interruttore"><input type="checkbox" id="piano-salva"> Salva il piano</label>
+        <button class="bottone" id="genera-piano">Genera piano</button>
+      </div>
+    </div>
+    <div class="griglia-kpi" id="kpi-piano"></div>
+    <div class="scheda" id="scheda-confronto" hidden>
+      <h3>Confronto con lo scenario senza ottimizzazione</h3>
+      <div id="confronto-piano" class="confronto"></div>
+    </div>
+    <div class="due-colonne">
+      <div class="scheda">
+        <h3>Giri di consegna</h3>
+        <div class="tabella-contenitore alta"><table id="tabella-giri"></table></div>
+      </div>
+      <div class="scheda">
+        <h3>Dettaglio giro</h3>
+        <div id="dettaglio-giro" class="dettaglio-giro"><p class="vuoto">Seleziona un giro dall'elenco.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ----------------------------------------------------- SIMULATORE -->
+  <section id="sezione-simulatore" class="sezione">
+    <div class="titolo-sezione"><h2>Simulatore conto proprio / conto terzi</h2></div>
+    <div class="due-colonne">
+      <div class="scheda">
+        <h3>Parametri della relazione</h3>
+        <form id="modulo-simulatore" class="modulo">
+          <label>Origine <select id="sim-origine"></select></label>
+          <label>Destinazione <select id="sim-destino"></select></label>
+          <label>Peso (kg) <input type="number" id="sim-peso" value="4000" min="1" step="any"></label>
+          <label>Volume (m³) <input type="number" id="sim-volume" value="18" min="0.1" step="any"></label>
+          <label>Pallet <input type="number" id="sim-pallet" value="10" min="0" step="1"></label>
+          <label>Mezzo <select id="sim-profilo"></select></label>
+          <label>Sconto vettore % <input type="number" id="sim-sconto" value="12" min="0" max="60"></label>
+          <label class="interruttore"><input type="checkbox" id="sim-ar" checked> Andata e ritorno</label>
+          <button class="bottone" type="submit">Confronta</button>
+        </form>
+      </div>
+      <div class="scheda">
+        <h3>Esito del confronto</h3>
+        <div id="esito-simulazione"><p class="vuoto">Imposta i parametri e avvia il confronto.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="pie-pagina">
+  LogisticMaster · API su <a href="/api/docs">/api/docs</a> · i costi sono stimati con i parametri configurati in <code>app/core/costi.py</code>
+</footer>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

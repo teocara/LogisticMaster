@@ -12,8 +12,11 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app import db, seed  # noqa: E402
-from app.api import anagrafiche, kpi, pianificazione  # noqa: E402
+from app import db, seed, simulazione  # noqa: E402
+from app.api import anagrafiche, esecuzione, kpi, pianificazione  # noqa: E402
+from app.core import esecuzione as motore_esecuzione  # noqa: E402
+from app.core import otif as motore_otif  # noqa: E402
+from app.core import pianificazione as motore_piano  # noqa: E402
 from app.core.costi import PROFILI_VEICOLO  # noqa: E402
 from app.core.geo import MatriceDistanze, Punto  # noqa: E402
 from app.models import ParametriPianoInput  # noqa: E402
@@ -45,16 +48,37 @@ def genera() -> dict:
 
     piano = pianificazione.genera_piano(ParametriPianoInput(salva=False, descrizione="Piano dimostrativo"))
 
+    # La fotografia degli ordini e delle scorte e' quella *prima* della
+    # pianificazione; viaggi e OTIF arrivano dopo l'esecuzione, cosi' la
+    # demo mostra il ciclo completo dalla domanda al consuntivo.
+    ordini = anagrafiche.elenco_ordini(limite=1000)
+    cruscotto = kpi.cruscotto()
+    scorte = pianificazione.analisi_scorte(solo_critiche=False, limite=2000)
+    trasferimenti = pianificazione.trasferimenti(km_massimi=900.0)
+
+    piano_id = motore_piano.salva_piano(piano, "Piano dimostrativo")
+    esito_simulazione = simulazione.simula_esecuzione(seed=11)
+    viaggi = [
+        motore_esecuzione.dettaglio_viaggio(v["id"])
+        for v in motore_esecuzione.elenco_viaggi(limite=1000, piano_id=piano_id)
+    ]
+
     return {
+        "viaggi": viaggi,
+        "simulazione": esito_simulazione,
+        "otif": motore_otif.cruscotto_otif(),
+        "otif_ordini": motore_otif.dettaglio_ordini(),
+        "consuntivo": motore_otif.consuntivo_costi(),
+        "causali": esecuzione.causali(),
         "stato": {"conteggi": {k: v for k, v in _conteggi().items()}},
         "siti": siti,
         "profili": anagrafiche.elenco_profili(),
         "veicoli": anagrafiche.elenco_veicoli(),
         "vettori": anagrafiche.elenco_vettori(),
-        "cruscotto": kpi.cruscotto(),
-        "scorte": pianificazione.analisi_scorte(solo_critiche=False, limite=2000),
-        "trasferimenti": pianificazione.trasferimenti(km_massimi=900.0),
-        "ordini": anagrafiche.elenco_ordini(limite=1000),
+        "cruscotto": cruscotto,
+        "scorte": scorte,
+        "trasferimenti": trasferimenti,
+        "ordini": ordini,
         "matrice_rete": pianificazione.matrice_rete(),
         "tratte": tratte,
         "piano": piano,

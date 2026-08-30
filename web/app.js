@@ -78,6 +78,8 @@ function caricaSezione(nome) {
     trasferimenti: caricaTrasferimenti,
     ordini: caricaOrdini,
     piano: () => {},
+    viaggi: caricaViaggi,
+    otif: caricaOtif,
     simulatore: () => {},
   };
   if (!caricate.has(nome)) {
@@ -484,6 +486,318 @@ function mostraDettaglioGiro(giro) {
 }
 
 document.getElementById('genera-piano').addEventListener('click', generaPiano);
+
+
+/* -------------------------------------------------------------- viaggi */
+const ETICHETTE_STATO = {
+  PIANIFICATO: 'pianificato',
+  ASSEGNATO: 'assegnato',
+  IN_CORSO: 'in corso',
+  COMPLETATO: 'completato',
+  ANNULLATO: 'annullato',
+};
+
+let causaliDisponibili = [];
+let viaggioCorrente = null;
+
+async function caricaViaggi() {
+  if (!causaliDisponibili.length) causaliDisponibili = await api('/api/causali');
+  const stato = document.getElementById('filtro-stato-viaggio').value;
+  const viaggi = await api(`/api/viaggi${stato ? `?stato=${stato}` : ''}`);
+
+  const per = (s) => viaggi.filter((v) => v.stato === s).length;
+  const chiusi = viaggi.filter((v) => v.costo_effettivo !== null);
+  const scostamento = chiusi.reduce((a, v) => a + v.scostamento_costo, 0);
+  document.getElementById('kpi-viaggi').innerHTML = [
+    schedaKpi('Da assegnare', numero(per('PIANIFICATO'))),
+    schedaKpi('Assegnati', numero(per('ASSEGNATO'))),
+    schedaKpi('In corso', numero(per('IN_CORSO')), '', per('IN_CORSO') ? 'attenzione' : ''),
+    schedaKpi('Completati', numero(per('COMPLETATO')), '', 'positivo'),
+    schedaKpi('Scostamento costo', euro(scostamento), `su ${numero(chiusi.length)} viaggi chiusi`,
+      scostamento > 0 ? 'attenzione' : 'positivo'),
+  ].join('');
+
+  tabella(document.getElementById('tabella-viaggi'), [
+    { titolo: 'Viaggio', valore: (v) => `<strong>${v.giro_id}</strong><br><small>${v.data}</small>` },
+    { titolo: 'Partenza', valore: (v) => `${v.origine_codice}<br><small>${v.veicolo_targa || v.vettore_nome || 'da assegnare'}</small>` },
+    { titolo: 'Stato', valore: (v) => `<span class="etichetta-stato stato-${v.stato === 'COMPLETATO' ? 'normale' : v.stato === 'ANNULLATO' ? 'critica' : 'alta'}">${ETICHETTE_STATO[v.stato]}</span>` },
+    { titolo: 'Tappe', numero: true, valore: (v) => `${numero(v.tappe_eseguite)}/${numero(v.tappe)}` },
+    { titolo: 'Km prev.', numero: true, valore: (v) => numero(v.km_previsti) },
+    { titolo: 'Km eff.', numero: true, valore: (v) => (v.km_effettivi === null ? '-' : numero(v.km_effettivi)) },
+    { titolo: 'Costo prev.', numero: true, valore: (v) => euro(v.costo_previsto) },
+    {
+      titolo: 'Scostamento',
+      numero: true,
+      valore: (v) => (v.scostamento_costo === null ? '-'
+        : `<span style="color:${v.scostamento_costo > 0 ? 'var(--rosso)' : 'var(--verde)'}">${
+            v.scostamento_costo > 0 ? '+' : ''}${euro(v.scostamento_costo)}</span>`),
+    },
+  ], viaggi, { selezionabile: true, alClick: (v) => mostraViaggio(v.id) });
+
+  if (viaggi.length) mostraViaggio(viaggioCorrente && viaggi.some((v) => v.id === viaggioCorrente)
+    ? viaggioCorrente : viaggi[0].id);
+  else document.getElementById('dettaglio-viaggio').innerHTML = '<p class="vuoto">Nessun viaggio con questo stato.</p>';
+}
+
+async function mostraViaggio(viaggioId) {
+  viaggioCorrente = viaggioId;
+  const v = await api(`/api/viaggi/${viaggioId}`);
+  const contenitore = document.getElementById('dettaglio-viaggio');
+
+  const tappe = v.tappe.map((t) => {
+    const esito = t.data_effettiva
+      ? `<span class="etichetta-stato stato-${t.stato === 'CONSEGNATA' ? 'normale' : t.stato === 'PARZIALE' ? 'alta' : 'critica'}">${t.stato.toLowerCase().replace('_', ' ')}</span>
+         <small>${t.data_effettiva} ${ora(t.ora_effettiva)}${t.ritardo_minuti ? ` · ${numero(t.ritardo_minuti)} min sul piano` : ''}</small>`
+      : `<button class="bottone secondario" data-tappa="${t.id}">Registra esito</button>`;
+    return `<tr><td>${t.sequenza}</td>
+      <td>${t.sito_nome}<small>${t.comune} (${t.provincia}) · finestra ${ora(t.apertura)}–${ora(t.chiusura)}</small></td>
+      <td class="numero">${t.data_prevista}<br>${ora(t.ora_prevista)}</td>
+      <td>${esito}</td></tr>`;
+  }).join('');
+
+  const azioni = {
+    PIANIFICATO: `<div class="filtri">
+        <label>Mezzo <select id="assegna-veicolo"><option value="">— vettore —</option></select></label>
+        <label>Vettore <select id="assegna-vettore"></select></label>
+        <label>Autista <input id="assegna-autista" placeholder="Cognome"></label>
+        <button class="bottone" id="azione-assegna">Assegna</button>
+      </div>`,
+    ASSEGNATO: `<button class="bottone" id="azione-partenza">Registra partenza</button>
+      <button class="bottone secondario" id="azione-annulla">Annulla viaggio</button>`,
+    IN_CORSO: `<div class="filtri">
+        <label>Km effettivi <input type="number" id="chiusura-km" value="${v.km_previsti}" step="any"></label>
+        <label>Costo effettivo € <input type="number" id="chiusura-costo" value="${v.costo_previsto}" step="any"></label>
+        <button class="bottone" id="azione-chiusura">Chiudi viaggio</button>
+      </div>`,
+    COMPLETATO: '',
+    ANNULLATO: '',
+  }[v.stato];
+
+  contenitore.innerHTML = `
+    <dl>
+      <dt>Viaggio</dt><dd>${v.giro_id} · ${v.data}</dd>
+      <dt>Stato</dt><dd>${ETICHETTE_STATO[v.stato]}</dd>
+      <dt>Partenza da</dt><dd>${v.origine_nome}</dd>
+      <dt>Esecuzione</dt><dd>${v.veicolo_targa ? `mezzo ${v.veicolo_targa}${v.autista ? ` · ${v.autista}` : ''}` : v.vettore_nome || 'da assegnare'}</dd>
+      <dt>Previsto</dt><dd>${numero(v.km_previsti)} km · ${euro(v.costo_previsto)} · ${numero(v.giorni_previsti)} giorno/i</dd>
+      ${v.km_effettivi !== null ? `<dt>Consuntivo</dt><dd>${numero(v.km_effettivi)} km · ${euro(v.costo_effettivo)}
+        (${v.scostamento_costo > 0 ? '+' : ''}${euro(v.scostamento_costo)})</dd>` : ''}
+    </dl>
+    ${azioni ? `<div class="scheda" style="background:#f7fafd;margin-bottom:14px">${azioni}</div>` : ''}
+    <h4>Tappe</h4>
+    <table><thead><tr><th>#</th><th>Destinazione</th><th class="numero">Previsto</th><th>Esito</th></tr></thead>
+      <tbody>${tappe}</tbody></table>
+    <h4>Diario</h4>
+    <table><tbody>${v.eventi.map((e) => `<tr><td><small>${e.momento.replace('T', ' ')}</small></td>
+      <td>${e.descrizione}</td></tr>`).join('')}</tbody></table>`;
+
+  if (v.stato === 'PIANIFICATO') await preparaAssegnazione(v);
+  collegaAzioni(v);
+}
+
+async function preparaAssegnazione(v) {
+  const [veicoli, vettori] = await Promise.all([api('/api/veicoli'), api('/api/vettori')]);
+  const disponibili = veicoli.filter((x) => x.sito_base === v.origine_id);
+  document.getElementById('assegna-veicolo').innerHTML =
+    '<option value="">— vettore —</option>' +
+    disponibili.map((x) => `<option value="${x.id}">${x.targa} · ${x.descrizione_profilo}</option>`).join('');
+  document.getElementById('assegna-vettore').innerHTML =
+    vettori.map((x) => `<option value="${x.id}">${x.nome}</option>`).join('');
+}
+
+function collegaAzioni(v) {
+  const chiama = async (percorso, corpo) => {
+    try {
+      await api(percorso, { method: 'POST', body: JSON.stringify(corpo || {}) });
+      await caricaViaggi();
+    } catch (errore) {
+      alert(errore.message);
+    }
+  };
+
+  document.getElementById('azione-assegna')?.addEventListener('click', () => {
+    const veicolo = document.getElementById('assegna-veicolo').value;
+    chiama(`/api/viaggi/${v.id}/assegnazione`, veicolo
+      ? { veicolo_id: Number(veicolo), autista: document.getElementById('assegna-autista').value || null }
+      : { vettore_id: Number(document.getElementById('assegna-vettore').value) });
+  });
+  document.getElementById('azione-partenza')?.addEventListener('click',
+    () => chiama(`/api/viaggi/${v.id}/partenza`, {}));
+  document.getElementById('azione-annulla')?.addEventListener('click', () => {
+    const motivo = prompt('Motivo dell\'annullamento:');
+    if (motivo) chiama(`/api/viaggi/${v.id}/annullamento`, { motivo });
+  });
+  document.getElementById('azione-chiusura')?.addEventListener('click', () => chiama(
+    `/api/viaggi/${v.id}/chiusura`,
+    {
+      km_effettivi: Number(document.getElementById('chiusura-km').value),
+      costo_effettivo: Number(document.getElementById('chiusura-costo').value),
+    },
+  ));
+  document.querySelectorAll('[data-tappa]').forEach((bottone) => {
+    bottone.addEventListener('click', () => moduloEsito(v, Number(bottone.dataset.tappa)));
+  });
+}
+
+function moduloEsito(viaggio, tappaId) {
+  const tappa = viaggio.tappe.find((t) => t.id === tappaId);
+  const righe = tappa.righe.map((r) => `<tr>
+      <td>${r.riferimento}<small>${r.articolo_codice} · ${r.articolo_descrizione}</small></td>
+      <td class="numero">${numero(r.quantita_richiesta)}</td>
+      <td class="numero"><input type="number" data-riga="${r.id}" value="${r.quantita_richiesta}"
+        min="0" max="${r.quantita_richiesta}" step="any" style="width:110px"></td>
+    </tr>`).join('');
+
+  document.getElementById('dettaglio-viaggio').insertAdjacentHTML('afterbegin', `
+    <div class="scheda" id="modulo-esito" style="border-color:var(--blu-chiaro);margin-bottom:14px">
+      <h4>Esito della tappa ${tappa.sequenza} · ${tappa.sito_nome}</h4>
+      <div class="filtri">
+        <label>Data <input type="date" id="esito-data" value="${tappa.data_prevista}"></label>
+        <label>Ora <input type="number" id="esito-ora" value="${tappa.ora_prevista.toFixed(2)}" min="0" max="23.98" step="any"></label>
+        <label>Causale
+          <select id="esito-causale"><option value="">— nessuna —</option>
+            ${causaliDisponibili.map((c) => `<option value="${c.codice}">${c.descrizione}</option>`).join('')}
+          </select>
+        </label>
+        <label class="interruttore"><input type="checkbox" id="esito-non-eseguita"> Non eseguita</label>
+      </div>
+      <table style="margin-top:10px"><thead><tr><th>Ordine e articolo</th>
+        <th class="numero">Richiesta</th><th class="numero">Consegnata</th></tr></thead><tbody>${righe}</tbody></table>
+      <div class="filtri" style="margin-top:12px">
+        <button class="bottone" id="conferma-esito">Registra</button>
+        <button class="bottone secondario" id="annulla-esito">Chiudi</button>
+      </div>
+    </div>`);
+
+  document.getElementById('annulla-esito').addEventListener('click',
+    () => document.getElementById('modulo-esito').remove());
+  document.getElementById('conferma-esito').addEventListener('click', async () => {
+    const quantita = {};
+    document.querySelectorAll('[data-riga]').forEach((campo) => {
+      quantita[Number(campo.dataset.riga)] = Number(campo.value);
+    });
+    try {
+      await api(`/api/tappe/${tappaId}/esito`, {
+        method: 'POST',
+        body: JSON.stringify({
+          data_effettiva: document.getElementById('esito-data').value,
+          ora_effettiva: Number(document.getElementById('esito-ora').value),
+          quantita,
+          causale: document.getElementById('esito-causale').value || null,
+          non_eseguita: document.getElementById('esito-non-eseguita').checked,
+        }),
+      });
+      await caricaViaggi();
+    } catch (errore) {
+      alert(errore.message);
+    }
+  });
+}
+
+document.getElementById('aggiorna-viaggi').addEventListener('click', caricaViaggi);
+document.getElementById('filtro-stato-viaggio').addEventListener('change', caricaViaggi);
+document.getElementById('simula-esecuzione').addEventListener('click', async (evento) => {
+  if (!confirm('Genera consuntivi verosimili per tutti i viaggi pianificati?')) return;
+  // currentTarget si azzera dopo il primo await: va letto subito.
+  const bottone = evento.currentTarget;
+  bottone.disabled = true;
+  try {
+    const esito = await api('/api/admin/simula-esecuzione', { method: 'POST' });
+    alert(`Eseguiti ${esito.viaggi_eseguiti} viaggi e ${esito.tappe_registrate} tappe.\n` +
+      `Scostamento di costo ${numero(esito.scostamento_pct, 1)}%.`);
+    await caricaViaggi();
+  } catch (errore) {
+    alert(errore.message);
+  } finally {
+    bottone.disabled = false;
+  }
+});
+
+/* ---------------------------------------------------------------- OTIF */
+async function caricaOtif() {
+  const tolleranza = document.getElementById('otif-tolleranza').value || 0;
+  const anticipo = document.getElementById('otif-anticipo').checked;
+  const [otif, consuntivo] = await Promise.all([
+    api(`/api/kpi/otif?tolleranza_minuti=${tolleranza}&accetta_anticipo=${anticipo}`),
+    api('/api/kpi/consuntivo'),
+  ]);
+  const t = otif.totali;
+
+  if (!t.ordini) {
+    document.getElementById('kpi-otif').innerHTML =
+      '<p class="vuoto">Nessuna consegna registrata: esegui i viaggi dalla sezione Viaggi.</p>';
+    return;
+  }
+
+  const tono = (valore) => (valore >= 95 ? 'positivo' : valore >= 85 ? 'attenzione' : 'critico');
+  document.getElementById('kpi-otif').innerHTML = [
+    schedaKpi('OTIF', `${numero(t.otif_pct, 1)}%`, `${numero(t.otif)} ordini su ${numero(t.ordini)}`, tono(t.otif_pct)),
+    schedaKpi('On time', `${numero(t.on_time_pct, 1)}%`, 'entro la finestra concordata', tono(t.on_time_pct)),
+    schedaKpi('In full', `${numero(t.in_full_pct, 1)}%`, 'ordini completi', tono(t.in_full_pct)),
+    schedaKpi('Ritardo medio', `${numero(t.ritardo_medio_ritardati_minuti)} min`, `su ${numero(t.ritardi)} consegne in ritardo`),
+    schedaKpi('Ritardi da piano', numero(t.ritardo_da_piano), 'gi\u00e0 fuori finestra a piano', t.ritardo_da_piano ? 'attenzione' : 'positivo'),
+    schedaKpi('Pezzi mancanti', numero(t.quantita_mancante), `completezza media ${numero(t.completezza_media_pct, 1)}%`),
+  ].join('');
+
+  tabella(document.getElementById('tabella-mancati'), [
+    { titolo: 'Motivo', valore: (m) => m.motivo },
+    { titolo: 'Ordini', numero: true, valore: (m) => numero(m.ordini) },
+    { titolo: 'Quota', numero: true, valore: (m) => `${numero(m.quota_pct, 1)}%` },
+  ], otif.mancati);
+
+  tabella(document.getElementById('tabella-causali'), [
+    { titolo: 'Causa', valore: (c) => c.voce },
+    { titolo: 'Ordini', numero: true, valore: (c) => numero(c.ordini) },
+    { titolo: 'Quota sui mancati', numero: true, valore: (c) => `${numero(c.quota_pct, 1)}%` },
+  ], otif.per_causale);
+
+  const colonneServizio = [
+    { titolo: 'Voce', valore: (r) => r.voce },
+    { titolo: 'Ordini', numero: true, valore: (r) => numero(r.ordini) },
+    { titolo: 'On time', numero: true, valore: (r) => `${numero(r.on_time_pct, 1)}%` },
+    { titolo: 'In full', numero: true, valore: (r) => `${numero(r.in_full_pct, 1)}%` },
+    { titolo: 'OTIF', numero: true, valore: (r) => `${numero(r.otif_pct, 1)}%` },
+  ];
+  tabella(document.getElementById('tabella-esecuzione'), colonneServizio, otif.per_esecuzione);
+  tabella(document.getElementById('tabella-clienti-otif'), colonneServizio, otif.per_cliente.slice(0, 10));
+
+  tabella(document.getElementById('tabella-peggiori'), [
+    { titolo: 'Ordine', valore: (o) => `<strong>${o.riferimento}</strong><br><small>richiesto il ${o.data_richiesta}</small>` },
+    { titolo: 'Cliente', valore: (o) => `${o.destino_nome}<br><small>${o.comune} (${o.provincia})</small>` },
+    { titolo: 'Viaggio', valore: (o) => `${o.giro_id}<br><small>${o.operatore}</small>` },
+    { titolo: 'Consegna', valore: (o) => `${o.data_consegna}<br><small>${ora(o.ora_consegna)}</small>` },
+    { titolo: 'Ritardo', numero: true, valore: (o) => (o.ritardo_minuti ? `${numero(o.ritardo_minuti)} min` : '-') },
+    { titolo: 'Mancante', numero: true, valore: (o) => (o.quantita_mancante ? numero(o.quantita_mancante) : '-') },
+    { titolo: 'Causa', valore: (o) => o.causale_descrizione || '-' },
+  ], otif.peggiori);
+
+  const c = consuntivo.totali;
+  document.getElementById('kpi-consuntivo').innerHTML = consuntivo.viaggi ? [
+    schedaKpi('Viaggi chiusi', numero(consuntivo.viaggi)),
+    schedaKpi('Costo previsto', euro(c.costo_previsto)),
+    schedaKpi('Costo effettivo', euro(c.costo_effettivo), `${c.scostamento_pct > 0 ? '+' : ''}${numero(c.scostamento_pct, 1)}%`,
+      c.scostamento_pct > 5 ? 'critico' : c.scostamento_pct > 0 ? 'attenzione' : 'positivo'),
+    schedaKpi('Km previsti / effettivi', `${numero(c.km_previsti)} / ${numero(c.km_effettivi)}`,
+      `${c.scostamento_km_pct > 0 ? '+' : ''}${numero(c.scostamento_km_pct, 1)}%`),
+    schedaKpi('Costo per km', `${euroPreciso(c.costo_km_previsto)} → ${euroPreciso(c.costo_km_effettivo)}`, 'previsto → effettivo'),
+  ].join('') : '<p class="vuoto">Nessun viaggio chiuso.</p>';
+
+  tabella(document.getElementById('tabella-scostamenti'), [
+    { titolo: 'Viaggio', valore: (v) => `<strong>${v.giro_id}</strong><br><small>${v.data}</small>` },
+    { titolo: 'Esecuzione', valore: (v) => (v.esecuzione === 'PROPRIO' ? 'flotta propria' : 'vettore terzo') },
+    { titolo: 'Km prev. / eff.', numero: true, valore: (v) => `${numero(v.km_previsti)} / ${numero(v.km_effettivi)}` },
+    { titolo: 'Costo previsto', numero: true, valore: (v) => euro(v.costo_previsto) },
+    { titolo: 'Costo effettivo', numero: true, valore: (v) => euro(v.costo_effettivo) },
+    {
+      titolo: 'Scostamento',
+      numero: true,
+      valore: (v) => `<span style="color:${v.scostamento_eur > 0 ? 'var(--rosso)' : 'var(--verde)'}">${
+        v.scostamento_eur > 0 ? '+' : ''}${euro(v.scostamento_eur)} (${numero(v.scostamento_pct, 1)}%)</span>`,
+    },
+  ], consuntivo.scostamenti_maggiori || []);
+}
+
+document.getElementById('aggiorna-otif').addEventListener('click', caricaOtif);
 
 /* ---------------------------------------------------------- simulatore */
 function popolaSelettori() {

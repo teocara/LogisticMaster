@@ -70,8 +70,8 @@ def elenco_piani(limite: int = Query(default=50, le=200)) -> list[dict]:
     )
     for p in piani:
         p["parametri"] = json.loads(p["parametri"]) if p["parametri"] else {}
-        p["consegne"] = db.query_uno(
-            "SELECT COUNT(*) AS n FROM consegne WHERE piano_id = ?", (p["id"],)
+        p["viaggi"] = db.query_uno(
+            "SELECT COUNT(*) AS n FROM viaggi WHERE piano_id = ?", (p["id"],)
         )["n"]
     return piani
 

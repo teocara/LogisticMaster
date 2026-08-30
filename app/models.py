@@ -93,3 +93,49 @@ class SimulazioneMakeOrBuy(BaseModel):
     profilo: str = "MOTRICE_180"
     sconto_vettore_pct: float = Field(default=0.12, ge=0, lt=1)
     andata_ritorno: bool = True
+
+
+# --------------------------------------------------------------------------
+# Esecuzione dei viaggi
+# --------------------------------------------------------------------------
+
+StatoViaggio = Literal["PIANIFICATO", "ASSEGNATO", "IN_CORSO", "COMPLETATO", "ANNULLATO"]
+
+
+class AssegnazioneInput(BaseModel):
+    """Assegnazione del viaggio a un mezzo aziendale oppure a un vettore."""
+
+    veicolo_id: int | None = None
+    vettore_id: int | None = None
+    autista: str | None = Field(default=None, max_length=80)
+
+
+class PartenzaInput(BaseModel):
+    momento: str | None = Field(
+        default=None,
+        description="Data e ora ISO della partenza effettiva; se assente si usa l'istante corrente",
+    )
+
+
+class EsitoTappaInput(BaseModel):
+    """Esito registrato dall'autista o dal capoturno su una tappa."""
+
+    data_effettiva: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    ora_effettiva: float = Field(ge=0, lt=24)
+    quantita: dict[int, float] = Field(
+        default_factory=dict,
+        description="Quantità consegnate per identificativo di riga; le righe omesse sono complete",
+    )
+    causale: str | None = None
+    note: str | None = Field(default=None, max_length=500)
+    non_eseguita: bool = False
+
+
+class ChiusuraViaggioInput(BaseModel):
+    km_effettivi: float | None = Field(default=None, ge=0)
+    costo_effettivo: float | None = Field(default=None, ge=0)
+    rientro: str | None = None
+
+
+class AnnullamentoInput(BaseModel):
+    motivo: str = Field(min_length=3, max_length=300)

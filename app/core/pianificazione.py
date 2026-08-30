@@ -453,7 +453,7 @@ def genera_piano(parametri: ParametriPiano | None = None) -> dict:
 
 
 def salva_piano(risultato: dict, descrizione: str = "") -> int:
-    """Persiste un piano generato e marca gli ordini come pianificati."""
+    """Persiste il piano e ne genera i viaggi eseguibili."""
     piano_id = db.esegui(
         "INSERT INTO piani (creato_il,data_riferimento,descrizione,parametri,risultato) VALUES (?,?,?,?,?)",
         (
@@ -464,21 +464,7 @@ def salva_piano(risultato: dict, descrizione: str = "") -> int:
             json.dumps(risultato, ensure_ascii=False),
         ),
     )
-    with db.transazione() as conn:
-        for giro in risultato["giri"]:
-            for fermata in giro["fermate"]:
-                for riferimento in fermata["spedizioni"]:
-                    ordine = conn.execute(
-                        "SELECT id FROM ordini WHERE riferimento = ?", (riferimento,)
-                    ).fetchone()
-                    if not ordine:
-                        continue
-                    conn.execute(
-                        """INSERT INTO consegne (piano_id,ordine_id,giro_id,data_prevista,stato)
-                           VALUES (?,?,?,?,'PIANIFICATA')""",
-                        (piano_id, ordine["id"], giro["id"], giro.get("data")),
-                    )
-                    conn.execute(
-                        "UPDATE ordini SET stato='PIANIFICATO' WHERE id = ?", (ordine["id"],)
-                    )
+    from .esecuzione import crea_viaggi_da_piano
+
+    risultato["viaggi"] = crea_viaggi_da_piano(piano_id, risultato)
     return piano_id

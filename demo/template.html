@@ -283,6 +283,7 @@ button.azione[aria-pressed="true"] { background: var(--blu); color: #fff; border
 <p class="avviso">
   <strong>Demo navigabile.</strong> Tutti i numeri di questa pagina sono prodotti dal motore di calcolo della
   piattaforma su uno scenario dimostrativo: 3 stabilimenti, 5 siti di stoccaggio, 26 clienti, 71 ordini.
+  Il ciclo è completo: portafoglio ordini, piano, esecuzione dei viaggi e OTIF a consuntivo.
   Il simulatore make or buy ricalcola i costi in pagina.
 </p>
 
@@ -424,6 +425,72 @@ button.azione[aria-pressed="true"] { background: var(--blu); color: #fff; border
     </div>
   </section>
 
+  <section class="pannello" id="p-viaggi" role="tabpanel" hidden>
+    <div class="intestazione-pannello">
+      <div>
+        <h2>Viaggi eseguiti</h2>
+        <p>Ogni giro pianificato diventa un viaggio assegnato a un mezzo o a un vettore, che avanza tappa
+          per tappa fino alla chiusura a consuntivo. Qui gli esiti sono simulati; in esercizio arrivano
+          dagli autisti e dai vettori.</p>
+      </div>
+      <div class="campi">
+        <label class="campo">Esecuzione
+          <select id="filtro-viaggi">
+            <option value="">Tutte</option>
+            <option value="PROPRIO">Flotta propria</option>
+            <option value="TERZI">Vettore terzo</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div class="kpi-riga" id="kpi-viaggi"></div>
+    <div class="griglia due">
+      <div class="scheda">
+        <h3>Elenco viaggi</h3>
+        <div class="tabella-scroll alta"><table id="tab-viaggi"></table></div>
+      </div>
+      <div class="scheda">
+        <h3>Avanzamento del viaggio</h3>
+        <div id="dettaglio-viaggio"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="pannello" id="p-otif" role="tabpanel" hidden>
+    <div class="intestazione-pannello">
+      <div>
+        <h2>OTIF a consuntivo</h2>
+        <p>Il servizio si misura per ordine: <strong>On Time</strong> entro la finestra concordata,
+          <strong>In Full</strong> con tutte le righe complete. Gli indicatori parziali restano separati
+          perché distinguono i problemi di trasporto da quelli di disponibilità.</p>
+      </div>
+    </div>
+    <div class="kpi-riga" id="kpi-otif"></div>
+    <div class="griglia due">
+      <div class="scheda">
+        <h3>Perché l’ordine non è OTIF</h3>
+        <div class="tabella-scroll"><table id="tab-mancati"></table></div>
+        <h3 style="margin-top:18px">Cause del mancato servizio</h3>
+        <div class="tabella-scroll"><table id="tab-causali"></table></div>
+      </div>
+      <div class="scheda">
+        <h3>Servizio per modalità di esecuzione</h3>
+        <div class="tabella-scroll"><table id="tab-esecuzione"></table></div>
+        <h3 style="margin-top:18px">Clienti con il servizio più basso</h3>
+        <div class="tabella-scroll"><table id="tab-clienti-otif"></table></div>
+      </div>
+    </div>
+    <div class="scheda">
+      <h3>Ordini fuori servizio</h3>
+      <div class="tabella-scroll"><table id="tab-peggiori"></table></div>
+    </div>
+    <div class="scheda">
+      <h3>Consuntivo economico dei viaggi chiusi</h3>
+      <div class="kpi-riga" id="kpi-consuntivo"></div>
+      <div class="tabella-scroll"><table id="tab-scostamenti"></table></div>
+    </div>
+  </section>
+
   <section class="pannello" id="p-simulatore" role="tabpanel" hidden>
     <div class="intestazione-pannello">
       <div>
@@ -460,7 +527,7 @@ button.azione[aria-pressed="true"] { background: var(--blu); color: #fff; border
 </main>
 
 <footer class="chiusura">
-  LogisticMaster · motore di calcolo in <code>app/core</code>, API FastAPI in <code>app/api</code>, 58 test.
+  LogisticMaster · motore di calcolo in <code>app/core</code>, API FastAPI in <code>app/api</code>, 87 test.
   I parametri di costo sono valori di mercato indicativi, da tarare sui dati reali dell’azienda.
 </footer>
 
@@ -521,6 +588,8 @@ const PANNELLI = [
   ['trasferimenti', 'Trasferimenti'],
   ['ordini', 'Ordini'],
   ['piano', 'Piano di trasporto'],
+  ['viaggi', 'Viaggi'],
+  ['otif', 'OTIF a consuntivo'],
   ['simulatore', 'Make or buy'],
 ];
 const nav = document.getElementById('sezioni');
@@ -788,6 +857,182 @@ mostraScorte();
   }
   mostraGiro(p.giri[0]);
   document.querySelector('#tab-giri tbody tr')?.setAttribute('aria-selected', 'true');
+})();
+
+
+/* ------------------------------------------------------------- viaggi */
+const ETICHETTE_STATO = {
+  PIANIFICATO: 'pianificato', ASSEGNATO: 'assegnato', IN_CORSO: 'in corso',
+  COMPLETATO: 'completato', ANNULLATO: 'annullato',
+};
+const ETICHETTE_TAPPA = {
+  DA_ESEGUIRE: 'da eseguire', CONSEGNATA: 'consegnata', PARZIALE: 'parziale',
+  RIFIUTATA: 'rifiutata', NON_ESEGUITA: 'non eseguita',
+};
+
+(function viaggi() {
+  const chiusi = D.viaggi.filter((v) => v.costo_effettivo !== null);
+  const scostamento = chiusi.reduce((a, v) => a + (v.scostamento_costo || 0), 0);
+  const tappe = D.viaggi.flatMap((v) => v.tappe);
+  const irregolari = tappe.filter((t) => t.stato !== 'CONSEGNATA').length;
+  document.getElementById('kpi-viaggi').innerHTML = [
+    kpi('Viaggi chiusi', num(chiusi.length), `${num(D.viaggi.length)} generati dal piano`),
+    kpi('Tappe eseguite', num(tappe.length), `${num(irregolari)} con anomalia`,
+      irregolari ? 'attenzione' : 'positivo'),
+    kpi('Flotta propria', num(D.viaggi.filter((v) => v.esecuzione === 'PROPRIO').length), 'mezzi aziendali saturati'),
+    kpi('Vettori terzi', num(D.viaggi.filter((v) => v.esecuzione === 'TERZI').length), 'trasporto acquistato'),
+    kpi('Scostamento costo', eur(scostamento), `${num(D.simulazione.scostamento_pct, 1)}% sul previsto`,
+      scostamento > 0 ? 'attenzione' : 'positivo'),
+  ].join('');
+
+  const colonne = [
+    { t: 'Viaggio', v: (x) => `<span class="codice">${testo(x.giro_id)}</span><small>${x.data}</small>` },
+    { t: 'Partenza', v: (x) => `<span class="codice">${testo(x.origine_codice)}</span><small>${
+        testo(x.veicolo_targa ? `${x.veicolo_targa}${x.autista ? ` · ${x.autista}` : ''}` : x.vettore_nome || '—')}</small>` },
+    { t: 'Stato', v: (x) => `<span class="pillola ${x.stato === 'COMPLETATO' ? 'p-ok' : 'p-alta'}">${ETICHETTE_STATO[x.stato]}</span>` },
+    { t: 'Tappe', num: true, v: (x) => num(x.tappe.length) },
+    { t: 'Km prev./eff.', num: true, v: (x) => `${num(x.km_previsti)} / ${num(x.km_effettivi)}` },
+    { t: 'Costo eff.', num: true, v: (x) => eur(x.costo_effettivo) },
+    {
+      t: 'Scostamento',
+      num: true,
+      v: (x) => `<span style="color:${x.scostamento_costo > 0 ? 'var(--rosso)' : 'var(--verde)'}">${
+        x.scostamento_costo > 0 ? '+' : ''}${eur(x.scostamento_costo)}</span>`,
+    },
+  ];
+
+  const disegna = () => {
+    const filtro = document.getElementById('filtro-viaggi').value;
+    const righe = filtro ? D.viaggi.filter((v) => v.esecuzione === filtro) : D.viaggi;
+    tabella(document.getElementById('tab-viaggi'), colonne, righe,
+      { scelta: true, alClick: mostraViaggio });
+    if (righe.length) {
+      mostraViaggio(righe[0]);
+      document.querySelector('#tab-viaggi tbody tr')?.setAttribute('aria-selected', 'true');
+    }
+  };
+  document.getElementById('filtro-viaggi').addEventListener('change', disegna);
+  disegna();
+})();
+
+function mostraViaggio(v) {
+  const tappe = v.tappe.map((t) => `<tr>
+      <td class="num">${t.sequenza}</td>
+      <td>${testo(t.sito_nome)}<small>${testo(t.comune)} (${testo(t.provincia)}) · finestra ${
+        orario(t.apertura)}–${orario(t.chiusura)}</small></td>
+      <td class="num">${t.data_prevista}<br>${orario(t.ora_prevista)}</td>
+      <td class="num">${t.data_effettiva || '—'}<br>${orario(t.ora_effettiva)}</td>
+      <td><span class="pillola ${t.stato === 'CONSEGNATA' ? 'p-ok' : t.stato === 'PARZIALE' ? 'p-alta' : 'p-critica'}">${
+        ETICHETTE_TAPPA[t.stato]}</span>${t.causale ? `<small>${testo(causaleDescrizione(t.causale))}</small>` : ''}</td>
+      <td class="num">${t.ritardo_minuti === null ? '—' : `${num(t.ritardo_minuti)} min`}</td>
+    </tr>`).join('');
+
+  const righe = v.tappe.flatMap((t) => t.righe).filter((r) => r.quantita_consegnata < r.quantita_richiesta);
+  document.getElementById('dettaglio-viaggio').innerHTML = `
+    <dl class="coppie">
+      <dt>Viaggio</dt><dd><span class="codice">${testo(v.giro_id)}</span> · ${v.data}</dd>
+      <dt>Partenza da</dt><dd>${testo(v.origine_nome)}</dd>
+      <dt>Esecuzione</dt><dd>${testo(v.veicolo_targa ? `mezzo ${v.veicolo_targa}${v.autista ? ` · ${v.autista}` : ''}`
+        : v.vettore_nome || '—')}</dd>
+      <dt>Previsto</dt><dd>${num(v.km_previsti)} km · ${eur(v.costo_previsto)} · ${num(v.giorni_previsti)} giorno/i</dd>
+      <dt>Consuntivo</dt><dd>${num(v.km_effettivi)} km · ${eur(v.costo_effettivo)}
+        (${v.scostamento_costo > 0 ? '+' : ''}${eur(v.scostamento_costo)})</dd>
+    </dl>
+    <h3>Tappe</h3>
+    <div class="tabella-scroll"><table><thead><tr><th class="num">#</th><th>Destinazione</th>
+      <th class="num">Previsto</th><th class="num">Effettivo</th><th>Esito</th><th class="num">Sul piano</th></tr></thead>
+      <tbody>${tappe}</tbody></table></div>
+    ${righe.length ? `<h3 style="margin-top:16px">Righe non completate</h3>
+      <div class="tabella-scroll"><table><thead><tr><th>Ordine</th><th>Articolo</th>
+        <th class="num">Richiesta</th><th class="num">Consegnata</th></tr></thead><tbody>${
+        righe.map((r) => `<tr><td class="codice">${testo(r.riferimento)}</td>
+          <td><span class="codice">${testo(r.articolo_codice)}</span><small>${testo(r.articolo_descrizione)}</small></td>
+          <td class="num">${num(r.quantita_richiesta)}</td>
+          <td class="num">${num(r.quantita_consegnata)}</td></tr>`).join('')}</tbody></table></div>` : ''}
+    <h3 style="margin-top:16px">Diario</h3>
+    <div class="tabella-scroll"><table><tbody>${v.eventi.map((e) => `<tr>
+      <td style="white-space:nowrap"><small>${testo(e.momento.replace('T', ' '))}</small></td>
+      <td>${testo(e.descrizione)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+const causaleDescrizione = (codice) =>
+  (D.causali.find((c) => c.codice === codice) || {}).descrizione
+  || (codice === 'PIANIFICAZIONE' ? 'Consegna già pianificata oltre la finestra richiesta' : codice);
+
+/* --------------------------------------------------------------- OTIF */
+(function otif() {
+  const o = D.otif, t = o.totali, c = D.consuntivo;
+  const tono = (v) => (v >= 95 ? 'positivo' : v >= 85 ? 'attenzione' : 'critico');
+  document.getElementById('kpi-otif').innerHTML = [
+    kpi('OTIF', `${num(t.otif_pct, 1)}%`, `${num(t.otif)} ordini su ${num(t.ordini)}`, tono(t.otif_pct)),
+    kpi('On time', `${num(t.on_time_pct, 1)}%`, 'entro la finestra concordata', tono(t.on_time_pct)),
+    kpi('In full', `${num(t.in_full_pct, 1)}%`, 'ordini completi', tono(t.in_full_pct)),
+    kpi('Ritardo medio', `${num(t.ritardo_medio_ritardati_minuti)} min`, `su ${num(t.ritardi)} consegne in ritardo`),
+    kpi('Ritardi da piano', num(t.ritardo_da_piano), 'già fuori finestra a piano',
+      t.ritardo_da_piano ? 'attenzione' : 'positivo'),
+    kpi('Pezzi mancanti', num(t.quantita_mancante), `completezza media ${num(t.completezza_media_pct, 1)}%`),
+  ].join('');
+
+  tabella(document.getElementById('tab-mancati'), [
+    { t: 'Motivo', v: (m) => testo(m.motivo) },
+    { t: 'Ordini', num: true, v: (m) => num(m.ordini) },
+    { t: 'Quota', num: true, v: (m) => `${num(m.quota_pct, 1)}%` },
+  ], o.mancati);
+
+  const massimo = Math.max(...o.per_causale.map((x) => x.ordini), 1);
+  tabella(document.getElementById('tab-causali'), [
+    { t: 'Causa', v: (x) => testo(x.voce) },
+    { t: 'Ordini', num: true, v: (x) => num(x.ordini) },
+    { t: 'Peso', v: (x) => barra((x.ordini / massimo) * 100) },
+    { t: 'Quota', num: true, v: (x) => `${num(x.quota_pct, 1)}%` },
+  ], o.per_causale);
+
+  const servizio = [
+    { t: 'Voce', v: (x) => testo(x.voce) },
+    { t: 'Ordini', num: true, v: (x) => num(x.ordini) },
+    { t: 'On time', num: true, v: (x) => `${num(x.on_time_pct, 1)}%` },
+    { t: 'In full', num: true, v: (x) => `${num(x.in_full_pct, 1)}%` },
+    { t: 'OTIF', v: (x) => misura(x.otif_pct) },
+  ];
+  tabella(document.getElementById('tab-esecuzione'), servizio, o.per_esecuzione);
+  tabella(document.getElementById('tab-clienti-otif'), servizio, o.per_cliente.slice(0, 10));
+
+  tabella(document.getElementById('tab-peggiori'), [
+    { t: 'Ordine', v: (x) => `<span class="codice">${testo(x.riferimento)}</span><small>richiesto il ${x.data_richiesta}</small>` },
+    { t: 'Cliente', v: (x) => `${testo(x.destino_nome)}<small>${testo(x.comune)} (${testo(x.provincia)})</small>` },
+    { t: 'Viaggio', v: (x) => `<span class="codice">${testo(x.giro_id)}</span><small>${testo(x.operatore)}</small>` },
+    { t: 'Consegna', num: true, v: (x) => `${x.data_consegna}<br>${orario(x.ora_consegna)}` },
+    { t: 'Ritardo', num: true, v: (x) => (x.ritardo_minuti ? `${num(x.ritardo_minuti)} min` : '—') },
+    { t: 'Mancante', num: true, v: (x) => (x.quantita_mancante ? num(x.quantita_mancante) : '—') },
+    { t: 'Causa', v: (x) => testo(x.causale_descrizione || '—') },
+  ], o.peggiori);
+
+  document.getElementById('kpi-consuntivo').innerHTML = [
+    kpi('Viaggi chiusi', num(c.viaggi)),
+    kpi('Costo previsto', eur(c.totali.costo_previsto), 'da piano'),
+    kpi('Costo effettivo', eur(c.totali.costo_effettivo),
+      `${c.totali.scostamento_pct > 0 ? '+' : ''}${num(c.totali.scostamento_pct, 1)}%`,
+      c.totali.scostamento_pct > 5 ? 'critico' : 'attenzione'),
+    kpi('Km previsti / effettivi', `${num(c.totali.km_previsti)} / ${num(c.totali.km_effettivi)}`,
+      `${c.totali.scostamento_km_pct > 0 ? '+' : ''}${num(c.totali.scostamento_km_pct, 1)}%`),
+    kpi('Costo per km', `${eur(c.totali.costo_km_previsto, 2)} → ${eur(c.totali.costo_km_effettivo, 2)}`,
+      'previsto → effettivo'),
+  ].join('');
+
+  tabella(document.getElementById('tab-scostamenti'), [
+    { t: 'Viaggio', v: (x) => `<span class="codice">${testo(x.giro_id)}</span><small>${x.data}</small>` },
+    { t: 'Esecuzione', v: (x) => `<span class="pillola ${x.esecuzione === 'PROPRIO' ? 'p-proprio' : 'p-terzi'}">${
+        x.esecuzione === 'PROPRIO' ? 'flotta' : 'vettore'}</span>` },
+    { t: 'Km prev./eff.', num: true, v: (x) => `${num(x.km_previsti)} / ${num(x.km_effettivi)}` },
+    { t: 'Costo previsto', num: true, v: (x) => eur(x.costo_previsto) },
+    { t: 'Costo effettivo', num: true, v: (x) => eur(x.costo_effettivo) },
+    {
+      t: 'Scostamento',
+      num: true,
+      v: (x) => `<span style="color:${x.scostamento_eur > 0 ? 'var(--rosso)' : 'var(--verde)'}">${
+        x.scostamento_eur > 0 ? '+' : ''}${eur(x.scostamento_eur)} (${num(x.scostamento_pct, 1)}%)</span>`,
+    },
+  ], c.scostamenti_maggiori);
 })();
 
 /* --------------------------------------------------- simulatore costi */

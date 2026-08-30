@@ -156,9 +156,13 @@ td.numero, th.numero { text-align: right; font-variant-numeric: tabular-nums; }
 .confronto .voce-confronto { border: 1px solid var(--bordo); border-radius: 8px; padding: 12px; }
 .confronto .valore-grande { font-size: 22px; font-weight: 700; color: var(--verde); }
 
-.dettaglio-giro dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0 0 14px; font-size: 13px; }
-.dettaglio-giro dt { color: var(--grigio); }
-.dettaglio-giro dd { margin: 0; font-weight: 600; }
+.dettaglio-giro dl, #dettaglio-viaggio dl {
+  display: grid; grid-template-columns: auto 1fr; gap: 4px 14px;
+  margin: 0 0 14px; font-size: 13px;
+}
+.dettaglio-giro dt, #dettaglio-viaggio dt { color: var(--grigio); }
+.dettaglio-giro dd, #dettaglio-viaggio dd { margin: 0; font-weight: 600; }
+td small { display: block; color: var(--grigio); font-size: 11.2px; font-weight: 400; }
 
 .modulo { display: grid; gap: 12px; }
 .modulo .bottone { justify-self: start; }

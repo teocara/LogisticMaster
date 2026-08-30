@@ -121,20 +121,73 @@ CREATE TABLE IF NOT EXISTS piani (
     risultato TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS consegne (
+-- Esecuzione: dal piano nascono i viaggi, che si eseguono tappa per tappa.
+CREATE TABLE IF NOT EXISTS viaggi (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     piano_id INTEGER REFERENCES piani(id) ON DELETE CASCADE,
-    ordine_id INTEGER REFERENCES ordini(id),
-    giro_id TEXT,
-    data_prevista TEXT,
-    ora_prevista REAL,
+    giro_id TEXT NOT NULL,
+    data TEXT NOT NULL,
+    origine_id INTEGER NOT NULL REFERENCES siti(id),
+    profilo TEXT NOT NULL,
+    veicolo_id INTEGER REFERENCES veicoli(id),
+    vettore_id INTEGER REFERENCES vettori(id),
+    autista TEXT,
+    stato TEXT NOT NULL DEFAULT 'PIANIFICATO'
+        CHECK (stato IN ('PIANIFICATO','ASSEGNATO','IN_CORSO','COMPLETATO','ANNULLATO')),
+    esecuzione TEXT NOT NULL DEFAULT 'PROPRIO' CHECK (esecuzione IN ('PROPRIO','TERZI')),
+    km_previsti REAL DEFAULT 0,
+    ore_previste REAL DEFAULT 0,
+    giorni_previsti REAL DEFAULT 1,
+    costo_previsto REAL DEFAULT 0,
+    partenza_prevista REAL DEFAULT 6,
+    partenza_effettiva TEXT,
+    rientro_effettivo TEXT,
+    km_effettivi REAL,
+    costo_effettivo REAL,
+    note TEXT
+);
+
+CREATE TABLE IF NOT EXISTS viaggi_tappe (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    viaggio_id INTEGER NOT NULL REFERENCES viaggi(id) ON DELETE CASCADE,
+    sequenza INTEGER NOT NULL,
+    sito_id INTEGER NOT NULL REFERENCES siti(id),
+    data_prevista TEXT NOT NULL,
+    ora_prevista REAL NOT NULL,
+    data_effettiva TEXT,
     ora_effettiva REAL,
-    stato TEXT DEFAULT 'PIANIFICATA'
+    stato TEXT NOT NULL DEFAULT 'DA_ESEGUIRE'
+        CHECK (stato IN ('DA_ESEGUIRE','CONSEGNATA','PARZIALE','RIFIUTATA','NON_ESEGUITA')),
+    causale TEXT,
+    note TEXT,
+    UNIQUE (viaggio_id, sequenza)
+);
+
+CREATE TABLE IF NOT EXISTS tappe_righe (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tappa_id INTEGER NOT NULL REFERENCES viaggi_tappe(id) ON DELETE CASCADE,
+    ordine_id INTEGER NOT NULL REFERENCES ordini(id),
+    articolo_id INTEGER NOT NULL REFERENCES articoli(id),
+    quantita_richiesta REAL NOT NULL,
+    quantita_consegnata REAL
+);
+
+CREATE TABLE IF NOT EXISTS viaggi_eventi (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    viaggio_id INTEGER NOT NULL REFERENCES viaggi(id) ON DELETE CASCADE,
+    tappa_id INTEGER REFERENCES viaggi_tappe(id) ON DELETE CASCADE,
+    momento TEXT NOT NULL,
+    tipo TEXT NOT NULL,
+    descrizione TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_giacenze_sito ON giacenze(sito_id);
 CREATE INDEX IF NOT EXISTS idx_righe_ordine ON ordini_righe(ordine_id);
 CREATE INDEX IF NOT EXISTS idx_ordini_stato ON ordini(stato, data_richiesta);
+CREATE INDEX IF NOT EXISTS idx_viaggi_stato ON viaggi(stato, data);
+CREATE INDEX IF NOT EXISTS idx_tappe_viaggio ON viaggi_tappe(viaggio_id, sequenza);
+CREATE INDEX IF NOT EXISTS idx_righe_tappa ON tappe_righe(tappa_id);
+CREATE INDEX IF NOT EXISTS idx_eventi_viaggio ON viaggi_eventi(viaggio_id, momento);
 """
 
 

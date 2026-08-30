@@ -26,6 +26,8 @@
   <button class="voce" data-sezione="trasferimenti">Trasferimenti inter-sito</button>
   <button class="voce" data-sezione="ordini">Ordini</button>
   <button class="voce" data-sezione="piano">Piano di trasporto</button>
+  <button class="voce" data-sezione="viaggi">Viaggi</button>
+  <button class="voce" data-sezione="otif">OTIF a consuntivo</button>
   <button class="voce" data-sezione="simulatore">Make or buy</button>
 </nav>
 
@@ -177,6 +179,74 @@
         <h3>Dettaglio giro</h3>
         <div id="dettaglio-giro" class="dettaglio-giro"><p class="vuoto">Seleziona un giro dall'elenco.</p></div>
       </div>
+    </div>
+  </section>
+
+  <!-- --------------------------------------------------------- VIAGGI -->
+  <section id="sezione-viaggi" class="sezione">
+    <div class="titolo-sezione">
+      <h2>Viaggi in esecuzione</h2>
+      <div class="filtri">
+        <label>Stato
+          <select id="filtro-stato-viaggio">
+            <option value="">Tutti</option>
+            <option value="PIANIFICATO">Pianificati</option>
+            <option value="ASSEGNATO">Assegnati</option>
+            <option value="IN_CORSO">In corso</option>
+            <option value="COMPLETATO">Completati</option>
+            <option value="ANNULLATO">Annullati</option>
+          </select>
+        </label>
+        <button class="bottone secondario" id="aggiorna-viaggi">Aggiorna</button>
+        <button class="bottone secondario" id="simula-esecuzione" title="Genera consuntivi verosimili per provare il cruscotto OTIF">Simula esecuzione</button>
+      </div>
+    </div>
+    <div class="griglia-kpi compatta" id="kpi-viaggi"></div>
+    <div class="due-colonne">
+      <div class="scheda">
+        <h3>Elenco viaggi</h3>
+        <div class="tabella-contenitore alta"><table id="tabella-viaggi"></table></div>
+      </div>
+      <div class="scheda">
+        <h3>Avanzamento del viaggio</h3>
+        <div id="dettaglio-viaggio"><p class="vuoto">Seleziona un viaggio dall'elenco.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ----------------------------------------------------------- OTIF -->
+  <section id="sezione-otif" class="sezione">
+    <div class="titolo-sezione">
+      <h2>OTIF a consuntivo</h2>
+      <div class="filtri">
+        <label>Tolleranza ritardo (min) <input type="number" id="otif-tolleranza" value="30" min="0" max="480" step="any"></label>
+        <label class="interruttore"><input type="checkbox" id="otif-anticipo" checked> Accetta consegne anticipate</label>
+        <button class="bottone secondario" id="aggiorna-otif">Ricalcola</button>
+      </div>
+    </div>
+    <div class="griglia-kpi" id="kpi-otif"></div>
+    <div class="due-colonne">
+      <div class="scheda">
+        <h3>Perché l’ordine non è OTIF</h3>
+        <div class="tabella-contenitore"><table id="tabella-mancati"></table></div>
+        <h3 style="margin-top:16px">Cause del mancato servizio</h3>
+        <div class="tabella-contenitore"><table id="tabella-causali"></table></div>
+      </div>
+      <div class="scheda">
+        <h3>Servizio per modalità di esecuzione</h3>
+        <div class="tabella-contenitore"><table id="tabella-esecuzione"></table></div>
+        <h3 style="margin-top:16px">Clienti con il servizio più basso</h3>
+        <div class="tabella-contenitore"><table id="tabella-clienti-otif"></table></div>
+      </div>
+    </div>
+    <div class="scheda">
+      <h3>Ordini fuori servizio</h3>
+      <div class="tabella-contenitore"><table id="tabella-peggiori"></table></div>
+    </div>
+    <div class="scheda">
+      <h3>Consuntivo economico dei viaggi chiusi</h3>
+      <div class="griglia-kpi compatta" id="kpi-consuntivo"></div>
+      <div class="tabella-contenitore"><table id="tabella-scostamenti"></table></div>
     </div>
   </section>
 

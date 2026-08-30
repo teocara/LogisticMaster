@@ -155,7 +155,7 @@ class TestApi(unittest.TestCase):
         self.assertEqual(len(riferimenti), len(set(riferimenti)))
         self.assertEqual(len(riferimenti), piano["spedizioni"])
 
-    def test_salvataggio_piano_marca_gli_ordini(self):
+    def test_salvataggio_piano_genera_i_viaggi(self):
         piano = self.client.post(
             "/api/piani/genera", json={"salva": True, "descrizione": "Piano di prova"}
         ).json()
@@ -163,6 +163,83 @@ class TestApi(unittest.TestCase):
         dettaglio = self.client.get(f"/api/piani/{piano['piano_id']}").json()
         self.assertEqual(dettaglio["descrizione"], "Piano di prova")
         self.assertFalse(self.client.get("/api/ordini?stato=DA_PIANIFICARE").json())
+        viaggi = self.client.get(f"/api/viaggi?piano_id={piano['piano_id']}").json()
+        self.assertEqual(len(viaggi), len(piano["giri"]))
+        self.assertTrue(all(v["stato"] == "PIANIFICATO" for v in viaggi))
+
+    # ------------------------------------------------------------ esecuzione
+    def test_ciclo_di_vita_del_viaggio(self):
+        self.client.post("/api/piani/genera", json={"salva": True})
+        viaggio = self.client.get("/api/viaggi?stato=PIANIFICATO").json()[0]
+
+        assegnato = self.client.post(
+            f"/api/viaggi/{viaggio['id']}/assegnazione", json={"vettore_id": 1}
+        )
+        self.assertEqual(assegnato.status_code, 200)
+        self.assertEqual(assegnato.json()["stato"], "ASSEGNATO")
+
+        # Senza partenza registrata l'esito della tappa non e' accettato.
+        tappa = assegnato.json()["tappe"][0]
+        anticipato = self.client.post(
+            f"/api/tappe/{tappa['id']}/esito",
+            json={"data_effettiva": viaggio["data"], "ora_effettiva": 9.0},
+        )
+        self.assertEqual(anticipato.status_code, 409)
+
+        self.assertEqual(
+            self.client.post(f"/api/viaggi/{viaggio['id']}/partenza", json={}).json()["stato"],
+            "IN_CORSO",
+        )
+        for t in assegnato.json()["tappe"]:
+            esito = self.client.post(
+                f"/api/tappe/{t['id']}/esito",
+                json={"data_effettiva": t["data_prevista"], "ora_effettiva": t["ora_prevista"]},
+            )
+            self.assertEqual(esito.status_code, 200)
+            self.assertEqual(esito.json()["stato"], "CONSEGNATA")
+
+        chiuso = self.client.post(
+            f"/api/viaggi/{viaggio['id']}/chiusura",
+            json={"km_effettivi": 480, "costo_effettivo": 720},
+        ).json()
+        self.assertEqual(chiuso["stato"], "COMPLETATO")
+        self.assertEqual(chiuso["km_effettivi"], 480)
+
+    def test_viaggio_inesistente_e_stato_non_valido(self):
+        self.assertEqual(self.client.get("/api/viaggi/999999").status_code, 404)
+        self.assertEqual(self.client.get("/api/viaggi?stato=IN_ORBITA").status_code, 422)
+        self.assertEqual(
+            self.client.post("/api/viaggi/999999/assegnazione", json={"vettore_id": 1}).status_code,
+            404,
+        )
+
+    def test_causale_non_ammessa_rifiutata_dalle_api(self):
+        self.client.post("/api/piani/genera", json={"salva": True})
+        viaggio = self.client.get("/api/viaggi?stato=PIANIFICATO").json()[0]
+        self.client.post(f"/api/viaggi/{viaggio['id']}/assegnazione", json={"vettore_id": 2})
+        self.client.post(f"/api/viaggi/{viaggio['id']}/partenza", json={})
+        tappa = self.client.get(f"/api/viaggi/{viaggio['id']}").json()["tappe"][0]
+        risposta = self.client.post(
+            f"/api/tappe/{tappa['id']}/esito",
+            json={
+                "data_effettiva": tappa["data_prevista"],
+                "ora_effettiva": 9.0,
+                "causale": "SCIOPERO_MARZIANI",
+            },
+        )
+        self.assertEqual(risposta.status_code, 409)
+
+    def test_causali_disponibili(self):
+        causali = self.client.get("/api/causali").json()
+        self.assertTrue(any(c["codice"] == "TRAFFICO" for c in causali))
+
+    def test_otif_e_consuntivo_disponibili(self):
+        otif = self.client.get("/api/kpi/otif").json()
+        self.assertIn("totali", otif)
+        self.assertIn("per_cliente", otif)
+        ordini = self.client.get("/api/kpi/otif/ordini?solo_mancati=true").json()
+        self.assertTrue(all(not o["otif"] for o in ordini))
+        self.assertIn("totali", self.client.get("/api/kpi/consuntivo").json())
 
     def test_parametri_piano_non_validi(self):
         self.assertEqual(

@@ -13,7 +13,9 @@ La piattaforma risponde alle domande operative di una direzione logistica:
 * come raggruppare gli ordini della settimana in carichi e giri di consegna;
 * quanto costa ogni giro, e se conviene farlo con la flotta aziendale o
   affidarlo a un vettore;
-* quanto si risparmia rispetto a come si lavora oggi.
+* quanto si risparmia rispetto a come si lavora oggi;
+* che servizio si e' davvero dato al cliente, e per colpa di che cosa quando
+  e' andata male.
 
 ---
 
@@ -41,7 +43,7 @@ curl -X POST localhost:8000/api/admin/ricarica-demo
 Test:
 
 ```bash
-python -m unittest discover -s tests -v      # 58 test
+python -m unittest discover -s tests -v      # 87 test
 ```
 
 ## Demo statica
@@ -121,7 +123,43 @@ Messina). La piattaforma calcola la percorrenza stradale fino al porto, il
 tempo e il costo della traversata, e considera le ore di traghetto **tempo di
 riposo e non di guida** ai fini della normativa.
 
-### 8. Cruscotto KPI
+### 8. Esecuzione dei viaggi (`app/core/esecuzione.py`)
+Ogni giro del piano salvato diventa un **viaggio** con le sue tappe e le
+righe da consegnare. Il viaggio attraversa una macchina a stati controllata
+(pianificato → assegnato → in corso → completato, con annullamento possibile
+finche' non e' concluso): non si parte senza assegnazione, non si registra un
+esito prima della partenza, non si chiude con tappe ancora aperte e lo stesso
+mezzo non puo' essere impegnato due volte in giornata.
+
+Su ogni tappa si registrano orario di arrivo, quantita' effettivamente
+scaricate e causale dell'eventuale disservizio; gli ordini serviti per intero
+passano a consegnato, quelli parziali restano aperti. Ogni passaggio finisce
+nel diario del viaggio, che resta la traccia di cosa e' successo e quando.
+La chiusura raccoglie percorrenza e costo effettivi.
+
+### 9. OTIF a consuntivo (`app/core/otif.py`)
+Il livello di servizio si misura **per ordine**, perche' e' il cliente a
+percepirlo:
+
+* **On Time** - consegna entro la finestra concordata (data richiesta e
+  orario di chiusura del sito destinatario), con franchigia in minuti
+  configurabile e possibilita' di rifiutare le consegne anticipate;
+* **In Full** - tutte le righe consegnate per intero, entro l'eventuale
+  tolleranza percentuale;
+* **OTIF** - entrambe le condizioni.
+
+Il cruscotto scompone il mancato servizio in *solo ritardo*, *solo
+incompleto* ed *entrambi*, lo aggrega per cliente, per modalita' di
+esecuzione e per causale, e distingue i ritardi imputabili all'esecuzione da
+quelli **gia' previsti dal piano** (tipicamente lunghe percorrenze servite in
+piu' giorni): si correggono pianificando diversamente, non spingendo sugli
+autisti. A fianco, il consuntivo economico confronta costo e percorrenza
+pianificati con quelli effettivi, viaggio per viaggio.
+
+Per valutare il cruscotto prima dell'innesto sul gestionale,
+`app/simulazione.py` genera esiti verosimili (`POST /api/admin/simula-esecuzione`).
+
+### 10. Cruscotto KPI
 Valore delle giacenze per sito, combinazioni sotto punto di riordino, rischio
 rottura, copertura media, e per ogni piano: km totali, costo totale e
 ottimizzato, costo per km / per pallet / per tonnellata-chilometro,
@@ -139,9 +177,11 @@ app/
   db.py                   schema SQLite e accesso ai dati
   models.py               schemi di validazione (Pydantic v2)
   seed.py                 scenario dimostrativo italiano
+  simulazione.py          generatore di consuntivi verosimili per la demo
   api/
     anagrafiche.py        siti, articoli, giacenze, flotta, ordini
     pianificazione.py     scorte, trasferimenti, piani, simulazioni
+    esecuzione.py         viaggi, esiti delle tappe, OTIF, consuntivo
     kpi.py                cruscotto direzionale e serie storica
   core/
     geo.py                distanze stradali, tempi, traghetti
@@ -150,8 +190,10 @@ app/
     consolidamento.py     pallet, carichi, scelta del mezzo
     vrp.py                ottimizzazione dei giri e tempi di guida
     pianificazione.py     orchestrazione del piano e KPI
+    esecuzione.py         viaggi, tappe, esiti di consegna
+    otif.py               livello di servizio e scostamenti di costo
 web/                      interfaccia operativa (HTML/CSS/JS, zero dipendenze)
-tests/                    58 test su motore di calcolo e API
+tests/                    87 test su motore, esecuzione e API
 ```
 
 Dipendenze: FastAPI, Uvicorn, Pydantic. Il database e' SQLite (nessun servizio
@@ -176,6 +218,13 @@ funziona anche senza connettivita'.
 | POST | `/api/simulazioni/make-or-buy` | Confronto conto proprio / conto terzi |
 | GET | `/api/rete/matrice` | Matrice distanze e tempi fra siti interni |
 | GET | `/api/kpi/cruscotto` | Indicatori di rete e magazzino |
+| GET | `/api/viaggi` | Viaggi con stato, avanzamento e scostamenti |
+| POST | `/api/viaggi/{id}/assegnazione` | Assegnazione a mezzo aziendale o vettore |
+| POST | `/api/viaggi/{id}/partenza` | Registrazione della partenza |
+| POST | `/api/tappe/{id}/esito` | Arrivo, quantita' consegnate, causale |
+| POST | `/api/viaggi/{id}/chiusura` | Chiusura con km e costo effettivi |
+| GET | `/api/kpi/otif` | OTIF a consuntivo con cause e scomposizioni |
+| GET | `/api/kpi/consuntivo` | Costo pianificato contro costo effettivo |
 
 ---
 
@@ -205,7 +254,8 @@ la stima e' adeguata.
 * Integrazione con il gestionale (ERP) per ordini e giacenze in tempo reale.
 * Routing reale (OSRM o servizio commerciale) al posto della stima geografica.
 * Anagrafica tariffaria per vettore con listini caricati da file.
-* Gestione dei viaggi in esecuzione (assegnazione autisti, tracking, OTIF a
-  consuntivo) e riconciliazione fra costo pianificato e costo fatturato.
+* Riconciliazione automatica fra costo pianificato e fattura del vettore.
+* Acquisizione degli esiti di consegna da app mobile o EDI del vettore, al
+  posto della registrazione manuale.
 * Vincoli aggiuntivi: patenti e abilitazioni ADR degli autisti, prenotazione
   delle baie di carico, finestre di consegna della GDO.

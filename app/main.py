@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import db
-from .api import anagrafiche, kpi, pianificazione
+from .api import anagrafiche, esecuzione, kpi, pianificazione
 
 CARTELLA_WEB = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web")
 
@@ -29,7 +29,8 @@ stoccaggio, calibrata sul mercato italiano.
 * riequilibrio inter-sito delle giacenze;
 * consolidamento dei carichi e scelta del mezzo;
 * ottimizzazione dei giri di consegna con finestre orarie e Reg. CE 561/2006;
-* costing conto proprio / conto terzi e cruscotto KPI.
+* costing conto proprio / conto terzi e cruscotto KPI;
+* esecuzione dei viaggi, esiti delle consegne e OTIF a consuntivo.
 """
 
 @asynccontextmanager
@@ -55,6 +56,7 @@ app = FastAPI(
 
 app.include_router(anagrafiche.router)
 app.include_router(pianificazione.router)
+app.include_router(esecuzione.router)
 app.include_router(kpi.router)
 
 
@@ -63,7 +65,9 @@ def stato() -> dict:
     """Stato di salute della piattaforma e consistenza dei dati."""
     conteggi = {
         tabella: db.query_uno(f"SELECT COUNT(*) AS n FROM {tabella}")["n"]
-        for tabella in ("siti", "articoli", "giacenze", "ordini", "veicoli", "vettori", "piani")
+        for tabella in (
+            "siti", "articoli", "giacenze", "ordini", "veicoli", "vettori", "piani", "viaggi"
+        )
     }
     return {"stato": "operativo", "versione": app.version, "conteggi": conteggi}
 
@@ -74,6 +78,18 @@ def ricarica_demo() -> dict:
     from .seed import popola
 
     return {"esito": "scenario ricaricato", "conteggi": popola()}
+
+
+@app.post("/api/admin/simula-esecuzione", tags=["sistema"])
+def simula_esecuzione(fino_a: str | None = None, seed: int = 11) -> dict:
+    """Esegue i viaggi pianificati generando consuntivi verosimili.
+
+    Serve a valutare il cruscotto OTIF prima dell'innesto sul gestionale:
+    in esercizio gli esiti arrivano dagli autisti e dai vettori.
+    """
+    from .simulazione import simula_esecuzione as simula
+
+    return simula(fino_a=fino_a, seed=seed)
 
 
 app.mount("/static", StaticFiles(directory=CARTELLA_WEB), name="static")

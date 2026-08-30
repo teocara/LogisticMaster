@@ -96,7 +96,10 @@ VEICOLI = [
 
 def _svuota(conn) -> None:
     for tabella in (
-        "consegne",
+        "viaggi_eventi",
+        "tappe_righe",
+        "viaggi_tappe",
+        "viaggi",
         "piani",
         "ordini_righe",
         "ordini",
